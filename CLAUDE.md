@@ -41,6 +41,19 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 - The only global hotkeys are the ones in `Settings`. The window toggle defaults to ⌘F1,
   registered on the F1 keycode. Every other hotkey ships unassigned.
 
+## Capture
+
+- **Wallpaper.** The canvas background comes from streaming the system wallpaper window: the
+  `SCWindow` owned by `com.apple.WindowManager`, titled `Wallpaper`, that is `isOnScreen` and
+  whose frame is the target display's. This tracks rotating, dynamic and folder-shuffled
+  wallpapers live. Don't use `NSWorkspace.desktopImageURL(for:)`: for a folder rotation it
+  returns the folder, not the image on screen. Each display also has an off-screen `Wallpaper`
+  window, and capturing that fails with `-3811`. Enumerating these windows needs
+  `excludingDesktopWindows: false`.
+- **Windows on another Space** (for example a full-screen Chrome presentation) still deliver
+  frames through an `SCStream`. A one-off `SCScreenshotManager` capture of the same window
+  fails with `-3811`, so all capture goes through streams.
+
 ## Build, test, verify, branches
 
 - `just test`, `just gate`; `just run` builds and launches `build/darkfield.app`.
