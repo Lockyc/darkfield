@@ -48,6 +48,5 @@ final class SharedSetTests: XCTestCase {
     func testAvailabilityReasons() {
         XCTAssertNil(Availability.available.reason)
         XCTAssertEqual(Availability.minimised.reason, "Minimised — restore it to share")
-        XCTAssertEqual(Availability.otherSpace.reason, "On another Space")
     }
 }

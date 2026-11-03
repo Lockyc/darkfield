@@ -2,15 +2,15 @@ import CoreGraphics
 
 /// Whether a shared window can be captured right now.
 public enum Availability: Equatable, Sendable {
-    case available, minimised, otherSpace, gone
+    /// Windows on another Space still stream, so they count as available; a closed window leaves
+    /// the set rather than lingering as a state.
+    case available, minimised
 
     /// Why the window is off the canvas, as the panel shows it; nil when it is on.
     public var reason: String? {
         switch self {
         case .available: nil
         case .minimised: "Minimised — restore it to share"
-        case .otherSpace: "On another Space"
-        case .gone: "Closed"
         }
     }
 }
