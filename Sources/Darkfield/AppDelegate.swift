@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var tick: Timer?
     private var statusItem: StatusItem?
     private var settingsWindow: NSWindow?
-    private var debugWindow: NSWindow?
+    private lazy var outputs = OutputController(canvas: canvas)
 
     private var settings: DarkfieldCore.Settings { model.settings }
 
@@ -39,14 +39,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         captures.start()
         startPointer()
         statusItem = StatusItem(model: model, openSettings: { [weak self] in self?.showSettings() })
-
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 540),
-                              styleMask: [.titled, .resizable, .closable], backing: .buffered, defer: false)
-        window.title = "darkfield debug"
-        window.contentView = CanvasView(model: canvas)
-        window.center()
-        window.orderFrontRegardless()
-        debugWindow = window
+        outputs.onFallback = { [weak self] message in
+            guard let self else { return }
+            model.settings.output = .meeting
+            model.notice = message
+        }
+        outputs.apply(settings.output)
     }
 
     private func registerHotKeys() {
@@ -57,6 +55,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func apply(old: DarkfieldCore.Settings) {
         settings.save(to: .standard)
         captures.settings = settings
+        if old.output != settings.output, outputs.current != settings.output {
+            model.notice = nil
+            outputs.apply(settings.output)
+        }
         if old.windowHotKey != settings.windowHotKey || old.pointerHotKey != settings.pointerHotKey, !model.recordingHotKey {
             registerHotKeys()
         }
@@ -90,6 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startPointer() {
         pointerInput.start(onMove: { [weak self] p in
             guard let self else { return }
+            outputs.keepCursorOff(p)
             pointerState.moved(to: p, at: CACurrentMediaTime())
             canvas.pointer = PointerMap.canvasPoint(p, placed: canvas.placed, zOrder: captures.zOrder)
         }, onClick: { [weak self] kind, p in
