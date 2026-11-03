@@ -61,6 +61,9 @@ struct PanelView: View {
 
             HStack {
                 Button("Settings…", action: openSettings)
+                Button("Check for Updates…") { model.updater?.checkForUpdates(nil) }
+                    .disabled(model.updater == nil)
+                    .help(model.updater == nil ? "Updates work in the installed app" : "")
                 Spacer()
                 Button("Quit darkfield") { NSApp.terminate(nil) }
             }

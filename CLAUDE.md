@@ -62,4 +62,9 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 - Branches: `main` + `dev`. Work lands on `dev`. A release fast-forwards `main` from `dev`
   (`git merge --ff-only dev`). Docs-only changes may land on `main` and are forward-merged into
   `dev` immediately.
-- Version: the root `VERSION` file is the only source.
+- Version: the root `VERSION` file is the only source. A release is `lockstep.sh release darkfield`
+  (fleet repo `docs/RELEASING.md`). It tags `v<VERSION>` and publishes a GitHub release with
+  notes, `darkfield.zip` and the Sparkle `appcast.xml` that `SUFeedURL` reads. The Sparkle key is
+  `~/.sparkle/darkfield-ed25519.key`, vaulted as `darkfield — Sparkle signing key`. Its public
+  half is `SUPublicEDKey`. The release interface: `just gate`, `VERSION`, `just bundle` (signs
+  with `APPLE_SIGNING_IDENTITY`, ad-hoc without it), `info_plist`, `just sparkle-bin`.

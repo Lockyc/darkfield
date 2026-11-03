@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import DarkfieldCore
+import Sparkle
 
 /// What the panel and settings window show and change. Settings changes persist and apply at once.
 @MainActor
@@ -26,6 +27,8 @@ final class AppModel: ObservableObject {
     /// Set while a hotkey recorder is listening, so the live hotkeys don't swallow the keystroke.
     @Published var recordingHotKey = false { didSet { onRecording?(recordingHotKey) } }
 
+    /// nil outside a bundle that names a feed (`swift run`); the panel's update button is then disabled.
+    var updater: SPUStandardUpdaterController?
     var onSettings: ((Settings) -> Void)?
     var onRecording: ((Bool) -> Void)?
     let captures: CaptureManager

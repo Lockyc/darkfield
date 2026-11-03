@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         captures.onChange = { [weak self] in self?.model.refreshRows() }
         captures.start()
         startPointer()
+        model.updater = Updater.make()
         statusItem = StatusItem(model: model, openSettings: { [weak self] in self?.showSettings() })
         outputs.onFallback = { [weak self] message in
             guard let self else { return }

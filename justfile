@@ -9,8 +9,9 @@ default:
 test:
     swift test
 
-# Pre-merge gate: build everything and run the tests
+# Pre-merge gate: lint the installer, build everything, run the tests
 gate:
+    shellcheck install.sh
     swift build
     swift test
 
@@ -21,24 +22,37 @@ info_plist := "Support/Info.plist"
 icons:
     plate icon --icns Support/AppIcon.icns --png 256:Support/icon.png Support/icon.svg
 
-# Build build/darkfield.app (version from VERSION; signed with APPLE_SIGNING_IDENTITY, else ad-hoc)
+# Build build/darkfield.app (version from VERSION, Sparkle embedded; signed with APPLE_SIGNING_IDENTITY, else ad-hoc)
 bundle:
     #!/usr/bin/env bash
     set -euo pipefail
     swift build -c release --product Darkfield
     bin=$(swift build -c release --show-bin-path)
     rm -rf {{app}}
-    mkdir -p {{app}}/Contents/MacOS {{app}}/Contents/Resources
+    mkdir -p {{app}}/Contents/MacOS {{app}}/Contents/Resources {{app}}/Contents/Frameworks
     cp "$bin/Darkfield" {{app}}/Contents/MacOS/Darkfield
     cp Support/AppIcon.icns {{app}}/Contents/Resources/AppIcon.icns
+    install_name_tool -add_rpath @executable_path/../Frameworks {{app}}/Contents/MacOS/Darkfield
+    ditto "$bin/Sparkle.framework" {{app}}/Contents/Frameworks/Sparkle.framework
     cp {{info_plist}} {{app}}/Contents/Info.plist
     plutil -replace CFBundleShortVersionString -string "$(cat VERSION)" {{app}}/Contents/Info.plist
     plutil -replace CFBundleVersion -string "$(cat VERSION)" {{app}}/Contents/Info.plist
+    # Inside-out: each nested Sparkle helper before the framework, the framework before the app.
     if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
-        codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" {{app}}
+        sign=(codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY")
     else
-        codesign --force --sign - {{app}}
+        sign=(codesign --force --sign -)
     fi
+    sparkle={{app}}/Contents/Frameworks/Sparkle.framework
+    "${sign[@]}" "$sparkle/Versions/B/XPCServices/Installer.xpc"
+    "${sign[@]}" --preserve-metadata=entitlements "$sparkle/Versions/B/XPCServices/Downloader.xpc"
+    "${sign[@]}" "$sparkle/Versions/B/Autoupdate" "$sparkle/Versions/B/Updater.app" "$sparkle"
+    "${sign[@]}" {{app}}
+
+# Print the directory holding Sparkle's sign_update and generate_keys (resolving packages first)
+sparkle-bin:
+    @swift package resolve >/dev/null
+    @echo "{{justfile_directory()}}/.build/artifacts/sparkle/Sparkle/bin"
 
 # Build and launch the local bundle
 run: bundle quit
