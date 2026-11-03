@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// What the canvas background shows.
-public enum WallpaperSource: Codable, Equatable, Sendable {
+public enum WallpaperSource: Codable, Hashable, Sendable {
     case primary
     case display(CGDirectDisplayID)
     case image(URL)

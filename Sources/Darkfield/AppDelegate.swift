@@ -1,52 +1,78 @@
 import AppKit
 import DarkfieldCore
+import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     static let windowToggleID: UInt32 = 1
     static let pointerToggleID: UInt32 = 2
 
-    let model = CanvasModel()
-    lazy var captures = CaptureManager(model: model)
+    let canvas = CanvasModel()
+    lazy var captures = CaptureManager(model: canvas)
+    lazy var model = AppModel(settings: Settings.load(from: .standard), captures: captures, canvas: canvas)
     private let hotKeys = HotKeys()
     private let pointerInput = PointerInput()
     private var pointerState = PointerState()
     private var tick: Timer?
-    private var statusItem: NSStatusItem?
+    private var statusItem: StatusItem?
+    private var settingsWindow: NSWindow?
     private var debugWindow: NSWindow?
 
-    var settings = Settings() {
-        didSet {
-            captures.settings = settings
-            settings.save(to: .standard)
-            if oldValue.windowHotKey != settings.windowHotKey { hotKeys.set(settings.windowHotKey, id: Self.windowToggleID) }
-            if oldValue.pointerHotKey != settings.pointerHotKey { hotKeys.set(settings.pointerHotKey, id: Self.pointerToggleID) }
-        }
-    }
+    private var settings: DarkfieldCore.Settings { model.settings }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if !CGPreflightScreenCaptureAccess() { CGRequestScreenCaptureAccess() }
-        settings = Settings.load(from: .standard)
-        hotKeys.set(settings.windowHotKey, id: Self.windowToggleID)
-        hotKeys.set(settings.pointerHotKey, id: Self.pointerToggleID)
+        captures.settings = settings
+        registerHotKeys()
         hotKeys.onPress = { [weak self] id in self?.hotKey(id) }
+        model.onSettings = { [weak self] old in self?.apply(old: old) }
+        model.onRecording = { [weak self] recording in
+            guard let self else { return }
+            if recording {
+                hotKeys.set(nil, id: Self.windowToggleID)
+                hotKeys.set(nil, id: Self.pointerToggleID)
+            } else {
+                registerHotKeys()
+            }
+        }
+        captures.onChange = { [weak self] in self?.model.refreshRows() }
         captures.start()
         startPointer()
+        statusItem = StatusItem(model: model, openSettings: { [weak self] in self?.showSettings() })
 
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 540),
                               styleMask: [.titled, .resizable, .closable], backing: .buffered, defer: false)
         window.title = "darkfield debug"
-        window.contentView = CanvasView(model: model)
+        window.contentView = CanvasView(model: canvas)
         window.center()
         window.orderFrontRegardless()
         debugWindow = window
+    }
 
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "rectangle.on.rectangle", accessibilityDescription: "darkfield")
-        let menu = NSMenu()
-        menu.addItem(withTitle: "Quit darkfield", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        item.menu = menu
-        statusItem = item
+    private func registerHotKeys() {
+        hotKeys.set(settings.windowHotKey, id: Self.windowToggleID)
+        hotKeys.set(settings.pointerHotKey, id: Self.pointerToggleID)
+    }
+
+    private func apply(old: DarkfieldCore.Settings) {
+        settings.save(to: .standard)
+        captures.settings = settings
+        if old.windowHotKey != settings.windowHotKey || old.pointerHotKey != settings.pointerHotKey, !model.recordingHotKey {
+            registerHotKeys()
+        }
+    }
+
+    private func showSettings() {
+        if settingsWindow == nil {
+            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(model: model)))
+            w.title = "darkfield Settings"
+            w.styleMask = [.titled, .closable]
+            w.isReleasedWhenClosed = false
+            settingsWindow = w
+        }
+        settingsWindow?.center()
+        NSApp.activate()
+        settingsWindow?.makeKeyAndOrderFront(nil)
     }
 
     private func hotKey(_ id: UInt32) {
@@ -55,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let app = NSWorkspace.shared.frontmostApplication else { return }
             Task { await captures.toggleFrontWindow(of: app) }
         case Self.pointerToggleID:
-            settings.pointerEnabled.toggle()
+            model.settings.pointerEnabled.toggle()
         default:
             break
         }
@@ -65,11 +91,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pointerInput.start(onMove: { [weak self] p in
             guard let self else { return }
             pointerState.moved(to: p, at: CACurrentMediaTime())
-            model.pointer = PointerMap.canvasPoint(p, placed: model.placed, zOrder: captures.zOrder)
+            canvas.pointer = PointerMap.canvasPoint(p, placed: canvas.placed, zOrder: captures.zOrder)
         }, onClick: { [weak self] kind, p in
             guard let self, settings.pointerEnabled,
-                  let at = PointerMap.canvasPoint(p, placed: model.placed, zOrder: captures.zOrder) else { return }
-            model.ripples.append(Ripple(at: at, kind: kind, start: CACurrentMediaTime()))
+                  let at = PointerMap.canvasPoint(p, placed: canvas.placed, zOrder: captures.zOrder) else { return }
+            canvas.ripples.append(Ripple(at: at, kind: kind, start: CACurrentMediaTime()))
         })
         let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tickPointer() }
@@ -83,12 +109,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let now = CACurrentMediaTime()
         let opacity = settings.pointerEnabled ? pointerState.opacity(at: now, idleFade: settings.idleFade) : 0
         let scale = pointerState.spotlightScale(at: now)
-        let ripples = model.ripples.filter { now - $0.start < Ripple.duration }
-        let animating = !ripples.isEmpty || !model.ripples.isEmpty || (model.pointer != nil && opacity > 0)
-        guard animating || opacity != model.pointerOpacity || scale != model.pointerScale else { return }
-        model.pointerOpacity = opacity
-        model.pointerScale = scale
-        model.ripples = ripples
-        model.changed()
+        let ripples = canvas.ripples.filter { now - $0.start < Ripple.duration }
+        let animating = !ripples.isEmpty || !canvas.ripples.isEmpty || (canvas.pointer != nil && opacity > 0)
+        guard animating || opacity != canvas.pointerOpacity || scale != canvas.pointerScale else { return }
+        canvas.pointerOpacity = opacity
+        canvas.pointerScale = scale
+        canvas.ripples = ripples
+        canvas.changed()
     }
 }
