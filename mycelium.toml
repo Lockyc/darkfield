@@ -1,0 +1,9 @@
+name    = "darkfield"
+summary = "macOS presenting app — only the windows you choose, on a clean canvas over your wallpaper, shared to a call or shown on a projector"
+kind    = "app"
+status  = "active"
+tags    = ["macos", "presenting", "screen-sharing", "projector", "menu-bar"]
+stack   = ["swift"]
+
+[github]
+topics_extra = ["appkit", "swift", "screencapturekit", "zoom", "google-meet"]
