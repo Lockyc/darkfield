@@ -74,7 +74,21 @@ struct PanelView: View {
 
     private var windowList: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Shared windows").font(.caption).foregroundStyle(.secondary)
+            HStack {
+                Text("Shared windows").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("Add Window…") {
+                    Task {
+                        let menu = await model.addWindowMenu()
+                        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+                    }
+                }
+                .controlSize(.small)
+            }
+            if model.windowHotKeyRefused, let key = model.settings.windowHotKey {
+                Text("\(key.display) isn't available — another app uses it. Change it in Settings.")
+                    .font(.caption).foregroundStyle(.red)
+            }
             List {
                 if model.rows.isEmpty {
                     Text("Press \(model.settings.windowHotKey?.display ?? "the window hotkey") in a window to share it")

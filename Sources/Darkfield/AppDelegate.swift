@@ -48,9 +48,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         outputs.apply(settings.output)
     }
 
+    /// Registers both hotkeys and records which ones macOS refused, so Settings and the panel can
+    /// say so instead of a shortcut silently doing nothing.
     private func registerHotKeys() {
-        hotKeys.set(settings.windowHotKey, id: Self.windowToggleID)
-        hotKeys.set(settings.pointerHotKey, id: Self.pointerToggleID)
+        var refused: Set<UInt32> = []
+        if !hotKeys.set(settings.windowHotKey, id: Self.windowToggleID) { refused.insert(Self.windowToggleID) }
+        if !hotKeys.set(settings.pointerHotKey, id: Self.pointerToggleID) { refused.insert(Self.pointerToggleID) }
+        model.windowHotKeyRefused = refused.contains(Self.windowToggleID)
+        model.pointerHotKeyRefused = refused.contains(Self.pointerToggleID)
     }
 
     private func apply(old: DarkfieldCore.Settings) {
@@ -95,10 +100,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             outputs.keepCursorOff(p)
             pointerState.moved(to: p, at: CACurrentMediaTime())
-            canvas.pointer = PointerMap.canvasPoint(p, placed: canvas.placed, zOrder: captures.zOrder)
+            canvas.pointer = PointerMap.canvasPoint(p, placed: canvas.placed, onScreen: captures.onScreen)
         }, onClick: { [weak self] kind, p in
             guard let self, settings.pointerEnabled,
-                  let at = PointerMap.canvasPoint(p, placed: canvas.placed, zOrder: captures.zOrder) else { return }
+                  let at = PointerMap.canvasPoint(p, placed: canvas.placed, onScreen: captures.onScreen) else { return }
             canvas.ripples.append(Ripple(at: at, kind: kind, start: CACurrentMediaTime()))
         })
         let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in

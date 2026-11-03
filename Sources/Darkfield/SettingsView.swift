@@ -11,10 +11,12 @@ struct SettingsView: View {
         Form {
             Section("Hotkeys") {
                 LabeledContent("Share or unshare window") {
-                    HotKeyRecorder(spec: $model.settings.windowHotKey, recording: $model.recordingHotKey)
+                    HotKeyRecorder(spec: $model.settings.windowHotKey, listeners: $model.listeningRecorders,
+                                   refused: model.windowHotKeyRefused)
                 }
                 LabeledContent("Audience pointer on/off") {
-                    HotKeyRecorder(spec: $model.settings.pointerHotKey, recording: $model.recordingHotKey)
+                    HotKeyRecorder(spec: $model.settings.pointerHotKey, listeners: $model.listeningRecorders,
+                                   refused: model.pointerHotKeyRefused)
                 }
             }
             Section("Audience pointer") {

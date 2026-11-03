@@ -35,3 +35,23 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(Settings.load(from: defaults), Settings())
     }
 }
+
+final class SettingsMigrationTests: XCTestCase {
+    func testMissingFieldsTakeDefaultsAndKeepTheRest() throws {
+        let json = #"{"margin": 12, "layout": "mirror"}"#
+        let s = try JSONDecoder().decode(Settings.self, from: Data(json.utf8))
+        XCTAssertEqual(s.margin, 12)
+        XCTAssertEqual(s.layout, .mirror)
+        XCTAssertEqual(s.windowHotKey, .defaultWindowToggle)
+        XCTAssertEqual(s.idleFade, 10)
+    }
+
+    func testExplicitNullsSurvive() throws {
+        var s = Settings()
+        s.idleFade = nil
+        s.windowHotKey = nil
+        let back = try JSONDecoder().decode(Settings.self, from: JSONEncoder().encode(s))
+        XCTAssertNil(back.idleFade)
+        XCTAssertNil(back.windowHotKey)
+    }
+}

@@ -30,7 +30,7 @@ final class OutputController {
             current = .meeting
         case .projector(let id):
             guard let screen = Self.screen(for: id), CGDisplayIsInMirrorSet(id) == 0 else {
-                fallBack()
+                fallBack(id)
                 return
             }
             meetingWindow?.orderOut(nil)
@@ -39,14 +39,15 @@ final class OutputController {
         }
     }
 
-    /// While projecting, the real cursor must never appear on the projected canvas: a point that
-    /// lands on the projector display is pushed back to the nearest point on the menu-bar display.
+    /// While projecting, the real cursor is kept off the projected canvas: a point that lands on the
+    /// projector display is pushed back to the nearest point on any other display. (It can still
+    /// show for a frame as it crosses — macOS has no per-display cursor hide.)
     func keepCursorOff(_ p: CGPoint) {
-        guard case .projector(let id) = current else { return }
-        let projector = CGDisplayBounds(id)
-        guard projector.contains(p) else { return }
-        let main = CGDisplayBounds(CGMainDisplayID())
-        let back = CGPoint(x: min(max(p.x, main.minX), main.maxX - 1), y: min(max(p.y, main.minY), main.maxY - 1))
+        guard case .projector(let id) = current, CGDisplayBounds(id).contains(p) else { return }
+        let others = NSScreen.screens.compactMap { $0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID }
+            .filter { $0 != id }.map(CGDisplayBounds)
+        let candidates = others.map { b in CGPoint(x: min(max(p.x, b.minX), b.maxX - 1), y: min(max(p.y, b.minY), b.maxY - 1)) }
+        guard let back = candidates.min(by: { hypot($0.x - p.x, $0.y - p.y) < hypot($1.x - p.x, $1.y - p.y) }) else { return }
         CGWarpMouseCursorPosition(back)
         CGAssociateMouseAndMouseCursorPosition(1)
     }
@@ -69,8 +70,10 @@ final class OutputController {
     private func showProjector(on screen: NSScreen) {
         closeProjector()
         let w = NSWindow(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false, screen: screen)
-        w.level = .normal
-        w.collectionBehavior = [.fullScreenAuxiliary, .canJoinAllSpaces]
+        // Above every app window, the projector's own menu bar and alert windows: nothing but the
+        // canvas may reach the wall.
+        w.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
+        w.collectionBehavior = [.fullScreenAuxiliary, .canJoinAllSpaces, .stationary, .ignoresCycle]
         w.backgroundColor = .black
         w.contentView = CanvasView(model: canvas)
         w.isReleasedWhenClosed = false
@@ -89,15 +92,17 @@ final class OutputController {
         if let screen = Self.screen(for: id), CGDisplayIsInMirrorSet(id) == 0 {
             projectorWindow?.setFrame(screen.frame, display: true)
         } else {
-            fallBack()
+            fallBack(id)
         }
     }
 
-    private func fallBack() {
+    private func fallBack(_ id: CGDirectDisplayID) {
         closeProjector()
         showMeeting()
         current = .meeting
-        onFallback?("Projector disconnected — showing the Meeting window")
+        onFallback?(CGDisplayIsInMirrorSet(id) != 0 && Self.screen(for: id) != nil
+            ? "Displays are mirrored — showing the Meeting window. Set them to extended to project."
+            : "Projector disconnected — showing the Meeting window")
     }
 
     static func screen(for id: CGDirectDisplayID) -> NSScreen? {

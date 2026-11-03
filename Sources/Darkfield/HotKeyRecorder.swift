@@ -4,23 +4,33 @@ import DarkfieldCore
 import SwiftUI
 
 /// Records a global hotkey: click, press the combination (at least one of ⌘⌥⌃), or ⎋ to cancel.
+/// Each recorder listens on its own; listening stops when the view goes away (Settings closed).
 struct HotKeyRecorder: View {
     @Binding var spec: HotKeySpec?
-    @Binding var recording: Bool
+    /// The count of listening recorders, shared so the live hotkeys stay released while any listens.
+    @Binding var listeners: Int
+    var refused: Bool
     @State private var monitor: Any?
 
     var body: some View {
-        HStack {
-            Button(recording ? "Press keys…" : (spec?.display ?? "None")) {
-                recording ? stop() : start()
+        VStack(alignment: .trailing, spacing: 2) {
+            HStack {
+                Button(monitor != nil ? "Press keys…" : (spec?.display ?? "None")) {
+                    monitor != nil ? stop() : start()
+                }
+                .frame(minWidth: 110)
+                Button("Clear") { spec = nil }.disabled(spec == nil)
             }
-            .frame(minWidth: 110)
-            Button("Clear") { spec = nil }.disabled(spec == nil)
+            if refused, spec != nil {
+                Text("macOS refused this shortcut — another app may use it").font(.caption).foregroundStyle(.red)
+            }
         }
+        .onDisappear(perform: stop)
     }
 
     private func start() {
-        recording = true
+        guard monitor == nil else { return }
+        listeners += 1
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             defer { stop() }
             if event.keyCode == UInt16(kVK_Escape) { return nil }
@@ -33,9 +43,10 @@ struct HotKeyRecorder: View {
     }
 
     private func stop() {
-        if let monitor { NSEvent.removeMonitor(monitor) }
+        guard let m = monitor else { return }
+        NSEvent.removeMonitor(m)
         monitor = nil
-        recording = false
+        listeners = max(0, listeners - 1)
     }
 
     static func carbon(_ f: NSEvent.ModifierFlags) -> UInt32 {

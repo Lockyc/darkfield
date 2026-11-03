@@ -38,12 +38,20 @@ final class Wallpaper {
         image = nil
         stopCapture()
         let capture = WindowCapture(window: window) { [weak self] event in
-            guard let self, case .frame(let s) = event else { return }
-            self.surface = s
-            self.onChange?()
+            guard let self else { return }
+            switch event {
+            case .frame(let s):
+                self.surface = s
+                self.onChange?()
+            case .stopped:
+                // Recreated on the next update; the last frame stays up meanwhile.
+                if self.capture?.windowID == window.windowID { self.capture = nil }
+            case .suspended:
+                break
+            }
         }
         self.capture = capture
-        Task { try? await capture.start() }
+        Task { await capture.start() }
     }
 
     private func stopCapture() {

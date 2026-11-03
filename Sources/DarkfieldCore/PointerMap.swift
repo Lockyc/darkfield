@@ -13,18 +13,28 @@ public struct PlacedWindow: Equatable, Sendable {
     }
 }
 
+/// Any window on screen, shared or not, with its CG global frame.
+public struct OnScreenWindow: Equatable, Sendable {
+    public let id: CGWindowID
+    public let frame: CGRect
+
+    public init(id: CGWindowID, frame: CGRect) {
+        self.id = id
+        self.frame = frame
+    }
+}
+
 public enum PointerMap {
-    /// The canvas point under the real mouse at `p` (CG global), or nil when `p` is over no shared
-    /// window. Where shared windows overlap on screen, the one first in `zOrder` (front-to-back) wins.
-    public static func canvasPoint(_ p: CGPoint, placed: [PlacedWindow], zOrder: [CGWindowID]) -> CGPoint? {
-        for id in zOrder {
-            guard let w = placed.first(where: { $0.id == id }), w.screenFrame.contains(p),
-                  w.screenFrame.width > 0, w.screenFrame.height > 0 else { continue }
-            let u = (p.x - w.screenFrame.minX) / w.screenFrame.width
-            let v = (p.y - w.screenFrame.minY) / w.screenFrame.height
-            return CGPoint(x: w.canvasFrame.minX + u * w.canvasFrame.width,
-                           y: w.canvasFrame.minY + v * w.canvasFrame.height)
-        }
-        return nil
+    /// The canvas point under the real mouse at `p` (CG global), or nil when the topmost window
+    /// under `p` is not shared — a meeting app's floating toolbar over a shared slide hides the
+    /// audience pointer. `onScreen` is every on-screen window, front to back.
+    public static func canvasPoint(_ p: CGPoint, placed: [PlacedWindow], onScreen: [OnScreenWindow]) -> CGPoint? {
+        guard let top = onScreen.first(where: { $0.frame.contains(p) }),
+              let w = placed.first(where: { $0.id == top.id }),
+              w.screenFrame.width > 0, w.screenFrame.height > 0 else { return nil }
+        let u = (p.x - w.screenFrame.minX) / w.screenFrame.width
+        let v = (p.y - w.screenFrame.minY) / w.screenFrame.height
+        return CGPoint(x: w.canvasFrame.minX + u * w.canvasFrame.width,
+                       y: w.canvasFrame.minY + v * w.canvasFrame.height)
     }
 }

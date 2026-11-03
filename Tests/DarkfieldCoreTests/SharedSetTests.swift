@@ -50,3 +50,14 @@ final class SharedSetTests: XCTestCase {
         XCTAssertEqual(Availability.minimised.reason, "Minimised — restore it to share")
     }
 }
+
+final class SharedSetPruneTests: XCTestCase {
+    func testPruneKeepsWindowsAddedAfterTheSnapshot() {
+        var s = SharedSet()
+        s.toggle(1, ownerPID: 2, selfPID: 1)
+        let snapshot = s.generation
+        s.toggle(7, ownerPID: 2, selfPID: 1)          // added after the content fetch began
+        s.prune(present: [], snapshot: snapshot)
+        XCTAssertEqual(s.ids, [7])
+    }
+}

@@ -24,8 +24,14 @@ final class AppModel: ObservableObject {
     @Published private(set) var displays: [Display] = []
     @Published private(set) var canCapture = CGPreflightScreenCaptureAccess()
     @Published var notice: String?
-    /// Set while a hotkey recorder is listening, so the live hotkeys don't swallow the keystroke.
-    @Published var recordingHotKey = false { didSet { onRecording?(recordingHotKey) } }
+    /// How many hotkey recorders are listening. While any is, the live hotkeys are released so they
+    /// don't swallow the keystroke.
+    @Published var listeningRecorders = 0 {
+        didSet { if (oldValue == 0) != (listeningRecorders == 0) { onRecording?(listeningRecorders > 0) } }
+    }
+    var recordingHotKey: Bool { listeningRecorders > 0 }
+    @Published var windowHotKeyRefused = false
+    @Published var pointerHotKeyRefused = false
 
     /// nil outside a bundle that names a feed (`swift run`); the panel's update button is then disabled.
     var updater: SPUStandardUpdaterController?
@@ -63,8 +69,40 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// A menu of windows that can be shared, built fresh; choosing one shares it.
+    func addWindowMenu() async -> NSMenu {
+        let menu = NSMenu()
+        let windows = await captures.shareableWindows()
+        if windows.isEmpty {
+            let item = NSMenuItem(title: "No other windows on screen", action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+        }
+        for w in windows {
+            let app = w.owningApplication.flatMap { NSRunningApplication(processIdentifier: $0.processID) }
+            let title = (w.title?.isEmpty == false ? w.title! : app?.localizedName) ?? "Window"
+            let item = NSMenuItem(title: "\(app?.localizedName ?? "") — \(title)", action: #selector(MenuTarget.pick(_:)), keyEquivalent: "")
+            item.target = MenuTarget.shared
+            item.representedObject = { [weak self] in self?.captures.toggle(w.windowID, ownerPID: w.owningApplication?.processID ?? -1) } as () -> Void
+            item.image = app?.icon.map { icon in
+                let i = icon.copy() as! NSImage
+                i.size = NSSize(width: 16, height: 16)
+                return i
+            }
+            menu.addItem(item)
+        }
+        return menu
+    }
+
     func openScreenRecordingSettings() {
         CGRequestScreenCaptureAccess()
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
     }
+}
+
+/// Runs the closure an NSMenuItem carries as its `representedObject`.
+@MainActor
+final class MenuTarget: NSObject {
+    static let shared = MenuTarget()
+    @objc func pick(_ item: NSMenuItem) { (item.representedObject as? () -> Void)?() }
 }
