@@ -67,4 +67,4 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
   notes, `darkfield.zip` and the Sparkle `appcast.xml` that `SUFeedURL` reads. The Sparkle key is
   `~/.sparkle/darkfield-ed25519.key`, vaulted as `darkfield — Sparkle signing key`. Its public
   half is `SUPublicEDKey`. The release interface: `just gate`, `VERSION`, `just bundle` (signs
-  with `APPLE_SIGNING_IDENTITY`, ad-hoc without it), `info_plist`, `just sparkle-bin`.
+  with `APPLE_SIGNING_IDENTITY`, else the keychain's Developer ID, else ad-hoc), `info_plist`, `just sparkle-bin`.
