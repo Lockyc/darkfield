@@ -10,13 +10,36 @@ final class StatusItem: NSObject {
     init(model: AppModel, openSettings: @escaping () -> Void) {
         super.init()
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: PanelView(model: model, openSettings: { [weak self] in
+        let panel = NSHostingController(rootView: PanelView(model: model, openSettings: { [weak self] in
             self?.popover.performClose(nil)
             openSettings()
         }))
-        item.button?.image = NSImage(systemSymbolName: "rectangle.on.rectangle", accessibilityDescription: "darkfield")
+        // The popover anchors itself to its content size. Left at its default size, it places the
+        // panel for 320×320, then the taller SwiftUI view grows the window up past the screen top.
+        panel.sizingOptions = .preferredContentSize
+        popover.contentViewController = panel
+        item.button?.image = Self.menuBarImage()
         item.button?.target = self
         item.button?.action = #selector(toggle)
+    }
+
+    /// The app icon's mark (`Support/icon.svg`) as a menu-bar template: the shared-window card with
+    /// its title band and the audience-pointer ring, cut out of a solid card.
+    static func menuBarImage() -> NSImage {
+        let image = NSImage(size: NSSize(width: 20, height: 16), flipped: true) { _ in
+            let card = NSRect(x: 1, y: 2, width: 18, height: 12)
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: card, xRadius: 1.6, yRadius: 1.6).fill()
+            NSGraphicsContext.current?.compositingOperation = .clear
+            NSBezierPath(rect: NSRect(x: card.minX, y: card.minY + 2.4, width: card.width, height: 1)).fill()
+            let ring = NSBezierPath(ovalIn: NSRect(x: card.midX - 2.2, y: card.minY + 6.4 - 2.2, width: 4.4, height: 4.4))
+            ring.lineWidth = 1.4
+            ring.stroke()
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "darkfield"
+        return image
     }
 
     @objc private func toggle() {
