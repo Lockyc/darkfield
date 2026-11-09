@@ -1,46 +1,27 @@
 import CoreGraphics
 
-/// How shared windows are arranged on the canvas.
-public enum LayoutMode: String, Codable, Sendable {
-    /// Arrange for the audience: a near-square grid in shared-set order, each window aspect-fit
-    /// into its cell.
-    case fill
-    /// Keep the windows' real relative positions and sizes: their union is aspect-fit to the canvas.
-    case mirror
-}
-
+/// The canvas is a stack: every shared window is aspect-fit to the canvas (inside the margin) on
+/// its own, and they are layered in their on-screen stacking order, so the window the presenter
+/// brings forward is the one the audience sees.
 public enum Layout {
     /// The canvas, in logical points. Canvas coordinates have a top-left origin, y down.
     public static let canvas = CGSize(width: 1920, height: 1080)
 
-    /// Canvas rects for `sources` (the windows' current CG global frames, in shared-set order),
-    /// one per source, in the same order. `margin` insets the canvas edge and separates grid cells.
-    public static func frames(sources: [CGRect], mode: LayoutMode, margin: CGFloat, canvas: CGSize = canvas) -> [CGRect] {
-        guard !sources.isEmpty else { return [] }
+    /// Canvas rects for `sources` (the windows' current CG global frames), one per source, in the
+    /// same order. `margin` insets the canvas edge.
+    public static func frames(sources: [CGRect], margin: CGFloat, canvas: CGSize = canvas) -> [CGRect] {
         let area = CGRect(origin: .zero, size: canvas).insetBy(dx: margin, dy: margin)
-        switch mode {
-        case .fill:
-            let n = sources.count
-            let cols = Int(Double(n).squareRoot().rounded(.up))
-            let rows = (n + cols - 1) / cols
-            let cellW = (area.width - CGFloat(cols - 1) * margin) / CGFloat(cols)
-            let cellH = (area.height - CGFloat(rows - 1) * margin) / CGFloat(rows)
-            return sources.enumerated().map { i, src in
-                let cell = CGRect(x: area.minX + CGFloat(i % cols) * (cellW + margin),
-                                  y: area.minY + CGFloat(i / cols) * (cellH + margin),
-                                  width: cellW, height: cellH)
-                return aspectFit(src.size, in: cell)
-            }
-        case .mirror:
-            let union = sources.dropFirst().reduce(sources[0]) { $0.union($1) }
-            let fitted = aspectFit(union.size, in: area)
-            let scale = fitted.width / union.width
-            return sources.map { src in
-                CGRect(x: fitted.minX + (src.minX - union.minX) * scale,
-                       y: fitted.minY + (src.minY - union.minY) * scale,
-                       width: src.width * scale, height: src.height * scale)
-            }
-        }
+        return sources.map { aspectFit($0.size, in: area) }
+    }
+
+    /// `ids` (shared-set order) ordered back to front for the canvas. Windows in `frontToBack` (the
+    /// on-screen stacking) follow it; windows not on screen, such as one on another Space, go to the
+    /// back in shared-set order.
+    public static func backToFront(_ ids: [CGWindowID], frontToBack: [CGWindowID]) -> [CGWindowID] {
+        let rank = Dictionary(frontToBack.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+        let off = ids.filter { rank[$0] == nil }
+        let on = ids.filter { rank[$0] != nil }.sorted { rank[$0]! > rank[$1]! }
+        return off + on
     }
 
     /// The largest rect with `size`'s aspect ratio that fits `box`, centred in it.

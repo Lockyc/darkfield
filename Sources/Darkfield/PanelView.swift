@@ -46,14 +46,6 @@ struct PanelView: View {
                 Text("Connect a second display to present to a projector").font(.caption).foregroundStyle(.secondary)
             }
 
-            LabeledContent("Layout") {
-                Picker("", selection: $model.settings.layout) {
-                    Text("Fill").tag(LayoutMode.fill)
-                    Text("Mirror").tag(LayoutMode.mirror)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-            }
             LabeledContent("Margin") {
                 Slider(value: $model.settings.margin, in: 0...120, step: 4)
             }
@@ -111,9 +103,6 @@ struct PanelView: View {
                             .buttonStyle(.borderless)
                             .help("Stop sharing")
                     }
-                }
-                .onMove { from, to in
-                    if let f = from.first { model.captures.move(from: f, to: to > f ? to - 1 : to) }
                 }
             }
             .frame(height: 120)

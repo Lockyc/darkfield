@@ -3,8 +3,8 @@ import DarkfieldCore
 import ScreenCaptureKit
 
 /// Keeps one `WindowCapture` per shared window and the wallpaper capture in step with the shared
-/// set and the system's windows, polling `SCShareableContent` twice a second, and lays the result
-/// out into the `CanvasModel`.
+/// set and the system's windows, polling `SCShareableContent` twice a second, and stacks the
+/// result into the `CanvasModel`, re-reading the on-screen stacking ten times a second.
 @MainActor
 final class CaptureManager {
     private(set) var set = SharedSet()
@@ -25,6 +25,7 @@ final class CaptureManager {
     private var suspended: Set<CGWindowID> = []
     private var frames: [CGWindowID: CGRect] = [:]
     private var timer: Timer?
+    private var stackTimer: Timer?
     private var polling = false
 
     init(model: CanvasModel) {
@@ -42,6 +43,9 @@ final class CaptureManager {
             Task { @MainActor in await self?.poll() }
         }
         Task { await poll() }
+        let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.restack() } }
+        RunLoop.main.add(t, forMode: .common)
+        stackTimer = t
     }
 
     /// Toggles the window under `p` (CG global) in or out of the shared set: the topmost window
@@ -82,11 +86,6 @@ final class CaptureManager {
     func remove(_ id: CGWindowID) {
         set.remove(id)
         drop(id)
-        relayout()
-    }
-
-    func move(from: Int, to: Int) {
-        set.move(from: from, to: to)
         relayout()
     }
 
@@ -159,11 +158,27 @@ final class CaptureManager {
         }
     }
 
+    /// The shared windows on the canvas, back to front.
+    private func stack() -> [CGWindowID] {
+        Layout.backToFront(set.laidOut(availability: availability).filter { frames[$0] != nil },
+                           frontToBack: onScreen.map(\.id))
+    }
+
+    /// Re-reads the on-screen stacking and relays out when it changes the canvas's front window
+    /// or order, so focusing a shared window brings it forward on the canvas within a tenth of a
+    /// second.
+    private func restack() {
+        let before = stack()
+        onScreen = visibleWindows()
+        if stack() != before { relayout() }
+    }
+
     private func relayout() {
-        let ids = set.laidOut(availability: availability).filter { frames[$0] != nil }
-        let rects = Layout.frames(sources: ids.map { frames[$0]! }, mode: settings.layout, margin: settings.margin)
+        let ids = stack()
+        let rects = Layout.frames(sources: ids.map { frames[$0]! }, margin: settings.margin)
         model.tiles = zip(ids, rects).map { CanvasModel.Tile(id: $0, surface: surfaces[$0], canvasFrame: $1) }
-        model.placed = zip(ids, rects).map { PlacedWindow(id: $0, screenFrame: frames[$0]!, canvasFrame: $1) }
+        // Only the front window takes the audience pointer: on the canvas the others sit behind it.
+        model.placed = zip(ids, rects).suffix(1).map { PlacedWindow(id: $0, screenFrame: frames[$0]!, canvasFrame: $1) }
         model.changed()
         onChange?()
     }

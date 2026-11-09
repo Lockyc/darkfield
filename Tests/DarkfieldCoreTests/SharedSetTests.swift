@@ -19,13 +19,6 @@ final class SharedSetTests: XCTestCase {
         XCTAssertEqual(s.ids, [])
     }
 
-    func testMoveReorders() {
-        var s = SharedSet()
-        for id: CGWindowID in [1, 2, 3] { s.toggle(id, ownerPID: other, selfPID: me) }
-        s.move(from: 2, to: 0)
-        XCTAssertEqual(s.ids, [3, 1, 2])
-    }
-
     func testUnavailableExcludedFromLayout() {
         var s = SharedSet()
         for id: CGWindowID in [1, 2, 3] { s.toggle(id, ownerPID: other, selfPID: me) }

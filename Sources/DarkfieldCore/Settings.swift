@@ -21,7 +21,6 @@ public struct Settings: Codable, Equatable, Sendable {
     /// Seconds of stillness before the audience pointer fades; nil = never.
     public var idleFade: TimeInterval? = 10
     public var margin: CGFloat = 40
-    public var layout: LayoutMode = .fill
     public var wallpaper: WallpaperSource = .primary
     public var output: Output = .meeting
     public var pointerEnabled = true
@@ -29,7 +28,7 @@ public struct Settings: Codable, Equatable, Sendable {
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case windowHotKey, pointerHotKey, idleFade, margin, layout, wallpaper, output, pointerEnabled
+        case windowHotKey, pointerHotKey, idleFade, margin, wallpaper, output, pointerEnabled
     }
 
     /// Field by field: a key missing from older saved settings takes its default and the rest
@@ -48,7 +47,6 @@ public struct Settings: Codable, Equatable, Sendable {
         pointerHotKey = optional(.pointerHotKey, pointerHotKey)
         idleFade = optional(.idleFade, idleFade)
         margin = field(.margin, margin)
-        layout = field(.layout, layout)
         wallpaper = field(.wallpaper, wallpaper)
         output = field(.output, output)
         pointerEnabled = field(.pointerEnabled, pointerEnabled)
@@ -62,7 +60,6 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(pointerHotKey, forKey: .pointerHotKey)
         try c.encode(idleFade, forKey: .idleFade)
         try c.encode(margin, forKey: .margin)
-        try c.encode(layout, forKey: .layout)
         try c.encode(wallpaper, forKey: .wallpaper)
         try c.encode(output, forKey: .output)
         try c.encode(pointerEnabled, forKey: .pointerEnabled)

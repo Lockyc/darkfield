@@ -9,7 +9,6 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(s.windowHotKey?.display, "⇧⌘1")
         XCTAssertNil(s.pointerHotKey)
         XCTAssertEqual(s.idleFade, 10)
-        XCTAssertEqual(s.layout, .fill)
         XCTAssertEqual(s.margin, 40)
         XCTAssertEqual(s.wallpaper, .primary)
         XCTAssertEqual(s.output, .meeting)
@@ -20,7 +19,6 @@ final class SettingsTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "darkfield-tests-\(UUID().uuidString)"))
         var s = Settings()
         s.idleFade = nil
-        s.layout = .mirror
         s.output = .projector(42)
         s.wallpaper = .image(URL(fileURLWithPath: "/tmp/x.png"))
         s.pointerHotKey = HotKeySpec(keyCode: 35, modifiers: 0x800 | 0x1000, display: "⌃⌥P")
@@ -41,7 +39,6 @@ final class SettingsMigrationTests: XCTestCase {
         let json = #"{"margin": 12, "layout": "mirror"}"#
         let s = try JSONDecoder().decode(Settings.self, from: Data(json.utf8))
         XCTAssertEqual(s.margin, 12)
-        XCTAssertEqual(s.layout, .mirror)
         XCTAssertEqual(s.windowHotKey, .defaultWindowToggle)
         XCTAssertEqual(s.idleFade, 10)
     }

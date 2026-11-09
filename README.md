@@ -35,6 +35,8 @@ brings back the ▶ Darkfield window and Settings, which has **Quit darkfield**.
 - **⇧⌘1** shares the window under the cursor, and pressing it again stops sharing it. A shared
   window keeps an amber ring around it for as long as it's shared. You can change the
   shortcut in Settings.
+- **Shared windows stack** on the canvas, each scaled to fill it, in the same order as on your
+  screen: the shared window you bring to the front is the one the audience sees.
 - **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It keeps working
   behind other windows. It floats above your other windows on every Space.
 - **On a projector**, set your displays to extended (not mirrored). Then choose **Present to →
@@ -42,9 +44,7 @@ brings back the ▶ Darkfield window and Settings, which has **Quit darkfield**.
   screen.
 - **The panel** (click the menu-bar icon) holds:
   - a live preview
-  - the shared windows (drag to reorder, ✕ to remove)
-  - the layout: **Fill** arranges windows for the audience, **Mirror** keeps your on-screen
-    arrangement
+  - the shared windows (✕ to remove)
   - the margin
   - the audience pointer toggle
 - **The audience pointer** is your cursor on the canvas, with an amber halo behind it so viewers

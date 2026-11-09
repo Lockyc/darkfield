@@ -17,7 +17,7 @@ public enum Availability: Equatable, Sendable {
 
 public enum ToggleResult: Equatable, Sendable { case added, removed, refusedOwnWindow }
 
-/// The windows the presenter has chosen, in the order they were added (or reordered to).
+/// The windows the presenter has chosen, in the order they were added.
 public struct SharedSet: Equatable, Sendable {
     public private(set) var ids: [CGWindowID] = []
     /// Counts additions; a window-list snapshot records it so `prune` can tell which windows the
@@ -45,12 +45,6 @@ public struct SharedSet: Equatable, Sendable {
     /// added after the snapshot is kept: the list was fetched before it could appear.
     public mutating func prune(present: Set<CGWindowID>, snapshot: Int) {
         for id in ids where !present.contains(id) && (addedAt[id] ?? 0) <= snapshot { remove(id) }
-    }
-
-    public mutating func move(from: Int, to: Int) {
-        guard ids.indices.contains(from) else { return }
-        let id = ids.remove(at: from)
-        ids.insert(id, at: min(max(to, 0), ids.count))
     }
 
     public mutating func remove(_ id: CGWindowID) {
