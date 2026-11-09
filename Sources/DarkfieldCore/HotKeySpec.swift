@@ -13,7 +13,6 @@ public struct HotKeySpec: Codable, Equatable, Sendable {
         self.display = display
     }
 
-    /// ⌘F1 on the F1 keycode (kVK_F1, 122), so ⌘+Brightness-Down — macOS's mirroring toggle — is
-    /// never intercepted.
-    public static let defaultWindowToggle = HotKeySpec(keyCode: 122, modifiers: 0x100, display: "⌘F1")
+    /// ⇧⌘1 (kVK_ANSI_1, 18), Screegle's window toggle, which darkfield replaces.
+    public static let defaultWindowToggle = HotKeySpec(keyCode: 18, modifiers: 0x300, display: "⇧⌘1")
 }

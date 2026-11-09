@@ -4,9 +4,9 @@ import XCTest
 final class SettingsTests: XCTestCase {
     func testDefaultsMatchSpec() {
         let s = Settings()
-        XCTAssertEqual(s.windowHotKey?.keyCode, 122)        // kVK_F1
-        XCTAssertEqual(s.windowHotKey?.modifiers, 0x100)    // cmdKey
-        XCTAssertEqual(s.windowHotKey?.display, "⌘F1")
+        XCTAssertEqual(s.windowHotKey?.keyCode, 18)         // kVK_ANSI_1
+        XCTAssertEqual(s.windowHotKey?.modifiers, 0x300)    // cmdKey | shiftKey
+        XCTAssertEqual(s.windowHotKey?.display, "⇧⌘1")
         XCTAssertNil(s.pointerHotKey)
         XCTAssertEqual(s.idleFade, 10)
         XCTAssertEqual(s.layout, .fill)

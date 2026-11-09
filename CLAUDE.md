@@ -38,8 +38,8 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 - The canvas never carries branding: no watermark, no app name.
 - Core geometry is in CG global coordinates (top-left origin, y down). AppKit points are
   converted at the edge.
-- The only global hotkeys are the ones in `Settings`. The window toggle defaults to ⌘F1,
-  registered on the F1 keycode. Every other hotkey ships unassigned.
+- The only global hotkeys are the ones in `Settings`. The window toggle defaults to ⇧⌘1,
+  Screegle's. Every other hotkey ships unassigned.
 
 ## Capture
 
