@@ -32,7 +32,8 @@ brings back the ▶ Darkfield window and Settings, which has **Quit darkfield**.
 
 ## Use
 
-- **⇧⌘1** shares the front window, and pressing it again stops sharing it. You can change the
+- **⇧⌘1** shares the front window, and pressing it again stops sharing it. A ring flashes
+  around the window and a sound plays: amber when it's shared, grey when it's not. You can change the
   shortcut in Settings.
 - **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It keeps working
   behind other windows. It floats above your other windows on every Space.
