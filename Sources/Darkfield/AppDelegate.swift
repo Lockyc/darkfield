@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let pointerInput = PointerInput()
     private var pointerState = PointerState()
     private var tick: Timer?
+    private var drawnPointer: CGPoint?
+    private var cursorReadAt: CFTimeInterval = 0
     private var statusItem: StatusItem?
     private var settingsWindow: NSWindow?
     private lazy var outputs = OutputController(canvas: canvas)
@@ -111,8 +113,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pointerInput.start(onMove: { [weak self] p in
             guard let self else { return }
             outputs.keepCursorOff(p)
-            pointerState.moved(to: p, at: CACurrentMediaTime())
-            canvas.pointer = PointerMap.canvasPoint(p, placed: canvas.placed, onScreen: captures.onScreen)
+            let now = CACurrentMediaTime()
+            pointerState.moved(to: p, at: now)
+            let hit = PointerMap.hit(p, placed: canvas.placed, onScreen: captures.onScreen)
+            canvas.pointer = hit?.point
+            if let hit {
+                canvas.cursorScale = hit.scale
+                // The system cursor's shape changes with what it's over (arrow, I-beam, hand);
+                // re-read it a few times a second while it's over a shared window.
+                if now - cursorReadAt > 0.1 {
+                    cursorReadAt = now
+                    canvas.cursor = Self.systemCursor() ?? canvas.cursor
+                }
+            }
         }, onClick: { [weak self] kind, p in
             guard let self, settings.pointerEnabled,
                   let at = PointerMap.canvasPoint(p, placed: canvas.placed, onScreen: captures.onScreen) else { return }
@@ -132,10 +145,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let scale = pointerState.spotlightScale(at: now)
         let ripples = canvas.ripples.filter { now - $0.start < Ripple.duration }
         let animating = !ripples.isEmpty || !canvas.ripples.isEmpty || (canvas.pointer != nil && opacity > 0)
-        guard animating || opacity != canvas.pointerOpacity || scale != canvas.pointerScale else { return }
+        let moved = canvas.pointer != drawnPointer || settings.pointerEnabled != canvas.showCursor
+        guard animating || moved || opacity != canvas.pointerOpacity || scale != canvas.pointerScale else { return }
         canvas.pointerOpacity = opacity
         canvas.pointerScale = scale
+        canvas.showCursor = settings.pointerEnabled
         canvas.ripples = ripples
+        drawnPointer = canvas.pointer
         canvas.changed()
+    }
+
+    /// The system's current cursor (whichever app set it) as an image with its size and hot spot
+    /// in points.
+    private static func systemCursor() -> (image: CGImage, size: CGSize, hotSpot: CGPoint)? {
+        guard let cursor = NSCursor.currentSystem else { return nil }
+        var rect = NSRect(origin: .zero, size: cursor.image.size)
+        guard let image = cursor.image.cgImage(forProposedRect: &rect, context: nil, hints: nil) else { return nil }
+        return (image, cursor.image.size, cursor.hotSpot)
     }
 }

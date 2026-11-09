@@ -10,6 +10,7 @@ final class CanvasLayer: CALayer {
     private var tileLayers: [CGWindowID: CALayer] = [:]
     private let pointerOuter = CAShapeLayer()
     private let pointerInner = CAShapeLayer()
+    private let cursorLayer = CALayer()
     private var rippleLayers: [CAShapeLayer] = []
 
     static let leftRipple = NSColor(calibratedRed: 1.0, green: 0.78, blue: 0.25, alpha: 1).cgColor
@@ -24,14 +25,21 @@ final class CanvasLayer: CALayer {
         background.frame = bounds
         background.contentsGravity = .resizeAspectFill
         addSublayer(background)
-        for (layer, color, width) in [(pointerOuter, NSColor.black.withAlphaComponent(0.75), 9.0),
-                                      (pointerInner, NSColor.white, 4.0)] {
-            layer.fillColor = nil
-            layer.strokeColor = color.cgColor
-            layer.lineWidth = width
+        // The locator halo behind the cursor: a soft amber disc with a bright rim, so viewers find
+        // the cursor at a glance on any content.
+        pointerOuter.fillColor = Self.leftRipple.copy(alpha: 0.28)
+        pointerOuter.strokeColor = nil
+        pointerInner.fillColor = nil
+        pointerInner.strokeColor = Self.leftRipple.copy(alpha: 0.9)
+        pointerInner.lineWidth = 3
+        for layer in [pointerOuter, pointerInner] {
             layer.zPosition = 10
             addSublayer(layer)
         }
+        cursorLayer.zPosition = 11
+        cursorLayer.contentsGravity = .resize
+        cursorLayer.magnificationFilter = .linear
+        addSublayer(cursorLayer)
     }
 
     override init(layer: Any) { super.init(layer: layer) }
@@ -63,6 +71,15 @@ final class CanvasLayer: CALayer {
             layer.frame = tile.canvasFrame
             layer.zPosition = CGFloat(i)
             layer.contents = tile.surface
+        }
+
+        if let p = m.pointer, m.showCursor, let c = m.cursor {
+            cursorLayer.contents = c.image
+            cursorLayer.frame = CGRect(x: p.x - c.hotSpot.x * m.cursorScale, y: p.y - c.hotSpot.y * m.cursorScale,
+                                       width: c.size.width * m.cursorScale, height: c.size.height * m.cursorScale)
+            cursorLayer.isHidden = false
+        } else {
+            cursorLayer.isHidden = true
         }
 
         let radius = PointerState.radius(canvasHeight: bounds.height) * m.pointerScale

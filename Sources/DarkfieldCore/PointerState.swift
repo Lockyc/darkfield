@@ -75,6 +75,7 @@ public struct PointerState: Sendable {
         return Self.spotlightScale
     }
 
-    /// The pointer ring's radius, relative to the canvas so it stays legible when scaled up.
-    public static func radius(canvasHeight: CGFloat) -> CGFloat { canvasHeight * 0.018 }
+    /// The locator halo's radius, relative to the canvas so it stays legible when scaled up. Wide
+    /// enough to surround a cursor drawn at full size.
+    public static func radius(canvasHeight: CGFloat) -> CGFloat { canvasHeight * 0.03 }
 }

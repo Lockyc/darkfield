@@ -37,12 +37,19 @@ public enum PointerMap {
     /// under `p` is not shared — a meeting app's floating toolbar over a shared slide hides the
     /// audience pointer. `onScreen` is every on-screen window, front to back.
     public static func canvasPoint(_ p: CGPoint, placed: [PlacedWindow], onScreen: [OnScreenWindow]) -> CGPoint? {
+        hit(p, placed: placed, onScreen: onScreen)?.point
+    }
+
+    /// `canvasPoint`, plus the shared window's scale on the canvas (canvas points per screen
+    /// point), which the cursor is drawn at.
+    public static func hit(_ p: CGPoint, placed: [PlacedWindow], onScreen: [OnScreenWindow]) -> (point: CGPoint, scale: CGFloat)? {
         guard let top = onScreen.first(where: { $0.frame.contains(p) }),
               let w = placed.first(where: { $0.id == top.id }),
               w.screenFrame.width > 0, w.screenFrame.height > 0 else { return nil }
         let u = (p.x - w.screenFrame.minX) / w.screenFrame.width
         let v = (p.y - w.screenFrame.minY) / w.screenFrame.height
-        return CGPoint(x: w.canvasFrame.minX + u * w.canvasFrame.width,
-                       y: w.canvasFrame.minY + v * w.canvasFrame.height)
+        return (CGPoint(x: w.canvasFrame.minX + u * w.canvasFrame.width,
+                        y: w.canvasFrame.minY + v * w.canvasFrame.height),
+                w.canvasFrame.width / w.screenFrame.width)
     }
 }

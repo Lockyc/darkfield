@@ -19,6 +19,13 @@ final class CanvasModel {
 
     /// The audience pointer, in canvas points; nil when the mouse is over no shared window.
     var pointer: CGPoint?
+    /// The system cursor drawn at `pointer`: its image, size and hot spot in screen points, and
+    /// the shared window's scale on the canvas. Shown while the audience pointer is on; it never
+    /// fades, only the locator halo behind it does.
+    var cursor: (image: CGImage, size: CGSize, hotSpot: CGPoint)?
+    var cursorScale: CGFloat = 1
+    var showCursor = false
+    /// The locator halo's opacity.
     var pointerOpacity = 0.0
     var pointerScale = 1.0
     var ripples: [Ripple] = []

@@ -51,7 +51,7 @@ final class PointerStateTests: XCTestCase {
     }
 
     func testRadius() {
-        XCTAssertEqual(PointerState.radius(canvasHeight: 1080), 19.44, accuracy: 0.001)
+        XCTAssertEqual(PointerState.radius(canvasHeight: 1080), 32.4, accuracy: 0.001)
     }
 
     func testRippleDuration() {

@@ -15,6 +15,11 @@ final class PointerMapTests: XCTestCase {
         XCTAssertEqual(PointerMap.canvasPoint(CGPoint(x: 500, y: 325), placed: placed, onScreen: stack(placed, [1])), CGPoint(x: 960, y: 540))
     }
 
+    func testScaleIsCanvasPointsPerScreenPoint() {
+        let placed = [PlacedWindow(id: 1, screenFrame: CGRect(x: 100, y: 100, width: 800, height: 450), canvasFrame: full)]
+        XCTAssertEqual(PointerMap.hit(CGPoint(x: 500, y: 325), placed: placed, onScreen: stack(placed, [1]))?.scale, 2.4)
+    }
+
     func testPointOutsideIsNil() {
         let placed = [PlacedWindow(id: 1, screenFrame: CGRect(x: 100, y: 100, width: 800, height: 450), canvasFrame: full)]
         XCTAssertNil(PointerMap.canvasPoint(CGPoint(x: 50, y: 50), placed: placed, onScreen: stack(placed, [1])))
