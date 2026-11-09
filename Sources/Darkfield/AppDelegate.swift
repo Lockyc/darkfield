@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: StatusItem?
     private var settingsWindow: NSWindow?
     private lazy var outputs = OutputController(canvas: canvas)
+    private lazy var rings = ShareRings { [weak self] in self?.captures.set.ids ?? [] }
 
     private var settings: DarkfieldCore.Settings { model.settings }
 
@@ -37,7 +38,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 registerHotKeys()
             }
         }
-        captures.onChange = { [weak self] in self?.model.refreshRows() }
+        captures.onChange = { [weak self] in
+            self?.model.refreshRows()
+            self?.rings.update()
+        }
+        captures.ignoredWindows = { [weak self] in self?.rings.windowIDs ?? [] }
         captures.start()
         startPointer()
         model.updater = Updater.make()
@@ -96,12 +101,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func hotKey(_ id: UInt32) {
         switch id {
         case Self.windowToggleID:
-            guard let app = NSWorkspace.shared.frontmostApplication else { return }
-            Task {
-                if let toggled = await captures.toggleFrontWindow(of: app) {
-                    ToggleFeedback.show(toggled.result, frame: toggled.frame)
-                }
-            }
+            let p = ScreenSpace.toCG(NSEvent.mouseLocation, primaryHeight: NSScreen.screens.first?.frame.height ?? 0)
+            Task { ToggleFeedback.play(await captures.toggleWindow(at: p)) }
         case Self.pointerToggleID:
             model.settings.pointerEnabled.toggle()
         default:
@@ -113,19 +114,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pointerInput.start(onMove: { [weak self] p in
             guard let self else { return }
             outputs.keepCursorOff(p)
-            let now = CACurrentMediaTime()
-            pointerState.moved(to: p, at: now)
-            let hit = PointerMap.hit(p, placed: canvas.placed, onScreen: captures.onScreen)
-            canvas.pointer = hit?.point
-            if let hit {
-                canvas.cursorScale = hit.scale
-                // The system cursor's shape changes with what it's over (arrow, I-beam, hand);
-                // re-read it a few times a second while it's over a shared window.
-                if now - cursorReadAt > 0.1 {
-                    cursorReadAt = now
-                    canvas.cursor = Self.systemCursor() ?? canvas.cursor
-                }
-            }
+            pointerState.moved(to: p, at: CACurrentMediaTime())
         }, onClick: { [weak self] kind, p in
             guard let self, settings.pointerEnabled,
                   let at = PointerMap.canvasPoint(p, placed: canvas.placed, onScreen: captures.onScreen) else { return }
@@ -141,6 +130,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Advances fade, spotlight and ripples; redraws only while something is visible or changing.
     private func tickPointer() {
         let now = CACurrentMediaTime()
+        // Hit-tested every frame, not only on mouse moves, so the pointer is right as soon as a
+        // window under a still mouse is shared, moved or uncovered.
+        let mouse = ScreenSpace.toCG(NSEvent.mouseLocation, primaryHeight: NSScreen.screens.first?.frame.height ?? 0)
+        let hit = PointerMap.hit(mouse, placed: canvas.placed, onScreen: captures.onScreen)
+        canvas.pointer = hit?.point
+        if let hit {
+            // Never smaller than a normal cursor on a 1080p screen, however far the window is
+            // scaled down to fit.
+            canvas.cursorScale = max(hit.scale, 1)
+            // The system cursor's shape changes with what it's over (arrow, I-beam, hand); re-read
+            // it a few times a second while it's over a shared window.
+            if now - cursorReadAt > 0.1 {
+                cursorReadAt = now
+                canvas.cursor = Self.systemCursor() ?? canvas.cursor
+            }
+        }
         let opacity = settings.pointerEnabled ? pointerState.opacity(at: now, idleFade: settings.idleFade) : 0
         let scale = pointerState.spotlightScale(at: now)
         let ripples = canvas.ripples.filter { now - $0.start < Ripple.duration }

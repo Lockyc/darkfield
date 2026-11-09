@@ -15,6 +15,8 @@ final class CaptureManager {
     private(set) var onScreen: [OnScreenWindow] = []
     var settings = Settings() { didSet { relayout() } }
     var onChange: (() -> Void)?
+    /// darkfield's own click-through overlays (the share rings): never the window under the mouse.
+    var ignoredWindows: () -> Set<CGWindowID> = { [] }
 
     private let model: CanvasModel
     private let wallpaper = Wallpaper()
@@ -42,14 +44,16 @@ final class CaptureManager {
         Task { await poll() }
     }
 
-    /// Toggles the frontmost window of `app` in or out of the shared set. Returns what happened and
-    /// the window's CG global frame; nil when `app` has no window to toggle.
-    func toggleFrontWindow(of app: NSRunningApplication) async -> (result: ToggleResult, frame: CGRect)? {
+    /// Toggles the window under `p` (CG global) in or out of the shared set: the topmost window
+    /// there, when it is an app's normal window. nil when there is none (the desktop, or a panel,
+    /// toolbar or darkfield's Meeting window is on top).
+    func toggleWindow(at p: CGPoint) async -> ToggleResult? {
         guard let content = try? await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true) else { return nil }
-        let order = Dictionary(uniqueKeysWithValues: Self.onScreenWindows().enumerated().map { ($1.id, $0) })
-        let candidates = content.windows.filter { $0.owningApplication?.processID == app.processIdentifier && $0.windowLayer == 0 }
-        guard let window = candidates.min(by: { (order[$0.windowID] ?? .max) < (order[$1.windowID] ?? .max) }) else { return nil }
-        return (toggle(window.windowID, ownerPID: app.processIdentifier), window.frame)
+        let order = Dictionary(uniqueKeysWithValues: visibleWindows().enumerated().map { ($1.id, $0) })
+        let under = content.windows.filter { order[$0.windowID] != nil && $0.frame.contains(p) }
+        guard let top = under.min(by: { order[$0.windowID]! < order[$1.windowID]! }),
+              top.windowLayer == 0, let pid = top.owningApplication?.processID else { return nil }
+        return toggle(top.windowID, ownerPID: pid)
     }
 
     /// Windows that can be shared from the panel: on-screen, normal-layer, not darkfield's own.
@@ -124,7 +128,7 @@ final class CaptureManager {
         availability = Dictionary(uniqueKeysWithValues: set.ids.compactMap { id in
             suspended.contains(id) ? (id, .minimised) : surfaces[id] == nil ? nil : (id, .available)
         })
-        onScreen = Self.onScreenWindows()
+        onScreen = visibleWindows()
         relayout()
     }
 
@@ -162,6 +166,12 @@ final class CaptureManager {
         model.placed = zip(ids, rects).map { PlacedWindow(id: $0, screenFrame: frames[$0]!, canvasFrame: $1) }
         model.changed()
         onChange?()
+    }
+
+    /// `onScreenWindows` without `ignoredWindows`.
+    private func visibleWindows() -> [OnScreenWindow] {
+        let ignored = ignoredWindows()
+        return Self.onScreenWindows().filter { !ignored.contains($0.id) }
     }
 
     /// Every on-screen window that can hide the pointer (`PointerMap.canHidePointer`), with its CG

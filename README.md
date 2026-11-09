@@ -32,8 +32,8 @@ brings back the ▶ Darkfield window and Settings, which has **Quit darkfield**.
 
 ## Use
 
-- **⇧⌘1** shares the front window, and pressing it again stops sharing it. A ring flashes
-  around the window and a sound plays: amber when it's shared, grey when it's not. You can change the
+- **⇧⌘1** shares the window under the cursor, and pressing it again stops sharing it. A shared
+  window keeps an amber ring around it for as long as it's shared. You can change the
   shortcut in Settings.
 - **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It keeps working
   behind other windows. It floats above your other windows on every Space.
@@ -47,8 +47,9 @@ brings back the ▶ Darkfield window and Settings, which has **Quit darkfield**.
     arrangement
   - the margin
   - the audience pointer toggle
-- **The audience pointer** shows over shared windows and fades after 10 seconds of stillness.
-  Shake the mouse to make it a spotlight, and clicks ripple. The fade time is in Settings.
+- **The audience pointer** is your cursor on the canvas, with an amber halo behind it so viewers
+  find it. The halo fades after 10 seconds of stillness; the cursor stays. Shake the mouse to
+  enlarge the halo, and clicks ripple. The fade time is in Settings.
 
 ## Status
 
