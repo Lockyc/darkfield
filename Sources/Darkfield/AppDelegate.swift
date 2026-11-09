@@ -95,7 +95,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch id {
         case Self.windowToggleID:
             guard let app = NSWorkspace.shared.frontmostApplication else { return }
-            Task { await captures.toggleFrontWindow(of: app) }
+            Task {
+                if let toggled = await captures.toggleFrontWindow(of: app) {
+                    ToggleFeedback.show(toggled.result, frame: toggled.frame)
+                }
+            }
         case Self.pointerToggleID:
             model.settings.pointerEnabled.toggle()
         default:

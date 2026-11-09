@@ -38,6 +38,11 @@ final class PointerMapTests: XCTestCase {
     func testToCG() {
         XCTAssertEqual(ScreenSpace.toCG(CGPoint(x: 10, y: 100), primaryHeight: 1117), CGPoint(x: 10, y: 1017))
     }
+
+    func testRectToAppKit() {
+        let cg = CGRect(x: 4000, y: 220, width: 960, height: 540)
+        XCTAssertEqual(ScreenSpace.toAppKit(cg, primaryHeight: 2160), CGRect(x: 4000, y: 1400, width: 960, height: 540))
+    }
 }
 
 final class PointerOcclusionTests: XCTestCase {

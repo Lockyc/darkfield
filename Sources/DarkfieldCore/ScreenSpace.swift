@@ -6,4 +6,8 @@ public enum ScreenSpace {
     public static func toCG(_ p: CGPoint, primaryHeight: CGFloat) -> CGPoint {
         CGPoint(x: p.x, y: primaryHeight - p.y)
     }
+
+    public static func toAppKit(_ r: CGRect, primaryHeight: CGFloat) -> CGRect {
+        CGRect(x: r.minX, y: primaryHeight - r.maxY, width: r.width, height: r.height)
+    }
 }

@@ -42,13 +42,14 @@ final class CaptureManager {
         Task { await poll() }
     }
 
-    /// Toggles the frontmost window of `app` in or out of the shared set.
-    func toggleFrontWindow(of app: NSRunningApplication) async {
-        guard let content = try? await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true) else { return }
+    /// Toggles the frontmost window of `app` in or out of the shared set. Returns what happened and
+    /// the window's CG global frame; nil when `app` has no window to toggle.
+    func toggleFrontWindow(of app: NSRunningApplication) async -> (result: ToggleResult, frame: CGRect)? {
+        guard let content = try? await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true) else { return nil }
         let order = Dictionary(uniqueKeysWithValues: Self.onScreenWindows().enumerated().map { ($1.id, $0) })
         let candidates = content.windows.filter { $0.owningApplication?.processID == app.processIdentifier && $0.windowLayer == 0 }
-        guard let window = candidates.min(by: { (order[$0.windowID] ?? .max) < (order[$1.windowID] ?? .max) }) else { return }
-        toggle(window.windowID, ownerPID: app.processIdentifier)
+        guard let window = candidates.min(by: { (order[$0.windowID] ?? .max) < (order[$1.windowID] ?? .max) }) else { return nil }
+        return (toggle(window.windowID, ownerPID: app.processIdentifier), window.frame)
     }
 
     /// Windows that can be shared from the panel: on-screen, normal-layer, not darkfield's own.
@@ -61,12 +62,15 @@ final class CaptureManager {
         }
     }
 
-    func toggle(_ id: CGWindowID, ownerPID: pid_t) {
-        if set.toggle(id, ownerPID: ownerPID, selfPID: ProcessInfo.processInfo.processIdentifier) == .removed {
+    @discardableResult
+    func toggle(_ id: CGWindowID, ownerPID: pid_t) -> ToggleResult {
+        let result = set.toggle(id, ownerPID: ownerPID, selfPID: ProcessInfo.processInfo.processIdentifier)
+        if result == .removed {
             drop(id)
             relayout()
         }
         Task { await poll() }
+        return result
     }
 
     /// Unsharing takes effect at once: the stream stops and the tile leaves the canvas before any
