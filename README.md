@@ -26,7 +26,8 @@ The installer downloads the latest release and checks that it is signed and nota
 installs `/Applications/darkfield.app` and launches it. Needs macOS 14 or later. On first launch,
 allow darkfield in System Settings → Privacy & Security → Screen Recording.
 
-darkfield lives in the menu bar and has no Dock icon. It updates itself: it checks daily, and
+darkfield lives in the menu bar and has no Dock icon. Opening it again from Spotlight or Finder
+brings back the ▶ Darkfield window and Settings, which has **Quit darkfield**. It updates itself: it checks daily, and
 **Check for Updates…** in its panel checks now.
 
 ## Use
@@ -34,7 +35,7 @@ darkfield lives in the menu bar and has no Dock icon. It updates itself: it chec
 - **⌘F1** shares the front window, and pressing it again stops sharing it. You can change the
   shortcut in Settings.
 - **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It keeps working
-  behind other windows.
+  behind other windows. It floats above your other windows on every Space.
 - **On a projector**, set your displays to extended (not mirrored). Then choose **Present to →
   Projector** in the panel. The canvas fills the projector, and your mouse stays on your own
   screen.

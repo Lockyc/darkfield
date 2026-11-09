@@ -38,8 +38,18 @@ struct SettingsView: View {
                 }
                 Button("Choose image…", action: chooseImage)
             }
+            Section {
+                HStack {
+                    Spacer()
+                    Button("Quit darkfield") { NSApp.terminate(nil) }
+                }
+            }
         }
         .formStyle(.grouped)
+        .scrollDisabled(true)
+        // A grouped Form is a scroll view with no ideal height; without this the window shrinks to
+        // its title bar.
+        .fixedSize(horizontal: false, vertical: true)
         .frame(width: 440)
     }
 

@@ -48,6 +48,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         outputs.apply(settings.output)
     }
 
+    /// Opening darkfield while it runs (Spotlight, Finder, the Dock) brings back its output and its
+    /// Settings window, so it stays reachable without the menu-bar icon.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        outputs.apply(settings.output)
+        showSettings()
+        return false
+    }
+
     /// Registers both hotkeys and records which ones macOS refused, so Settings and the panel can
     /// say so instead of a shortcut silently doing nothing.
     private func registerHotKeys() {

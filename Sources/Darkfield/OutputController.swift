@@ -55,8 +55,12 @@ final class OutputController {
     private func showMeeting() {
         if meetingWindow == nil {
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 540),
-                             styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+                             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
             w.title = Self.meetingTitle
+            // Stays above the presenter's windows, on every Space, including over a full-screen
+            // presentation.
+            w.level = .floating
+            w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             w.contentAspectRatio = Layout.canvas
             w.contentView = CanvasView(model: canvas)
             w.isReleasedWhenClosed = false
