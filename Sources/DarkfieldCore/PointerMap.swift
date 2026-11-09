@@ -25,6 +25,14 @@ public struct OnScreenWindow: Equatable, Sendable {
 }
 
 public enum PointerMap {
+    /// Whether a window can stand between the mouse and a shared window: a visible window below the
+    /// Dock's level. System layers from the Dock up include full-display transparent overlays
+    /// (Notification Centre's covers every display) that would otherwise hide the pointer
+    /// everywhere.
+    public static func canHidePointer(layer: Int, alpha: Double) -> Bool {
+        alpha > 0 && layer < Int(CGWindowLevelForKey(.dockWindow))
+    }
+
     /// The canvas point under the real mouse at `p` (CG global), or nil when the topmost window
     /// under `p` is not shared — a meeting app's floating toolbar over a shared slide hides the
     /// audience pointer. `onScreen` is every on-screen window, front to back.

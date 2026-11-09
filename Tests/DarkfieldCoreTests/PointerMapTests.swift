@@ -50,4 +50,13 @@ final class PointerOcclusionTests: XCTestCase {
         XCTAssertNil(PointerMap.canvasPoint(CGPoint(x: 450, y: 20), placed: placed, onScreen: onScreen))
         XCTAssertNotNil(PointerMap.canvasPoint(CGPoint(x: 100, y: 200), placed: placed, onScreen: onScreen))
     }
+
+    func testOnlyAppLevelVisibleWindowsHideThePointer() {
+        XCTAssertTrue(PointerMap.canHidePointer(layer: 0, alpha: 1))     // app window
+        XCTAssertTrue(PointerMap.canHidePointer(layer: 3, alpha: 1))     // floating toolbar
+        XCTAssertTrue(PointerMap.canHidePointer(layer: 8, alpha: 1))     // modal panel
+        XCTAssertFalse(PointerMap.canHidePointer(layer: 0, alpha: 0))    // invisible
+        XCTAssertFalse(PointerMap.canHidePointer(layer: 20, alpha: 1))   // Dock
+        XCTAssertFalse(PointerMap.canHidePointer(layer: 23, alpha: 1))   // Notification Centre's full-display overlay
+    }
 }

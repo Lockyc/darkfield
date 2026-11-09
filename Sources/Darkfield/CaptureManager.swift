@@ -160,14 +160,13 @@ final class CaptureManager {
         onChange?()
     }
 
-    /// Every visible on-screen window below the menu bar's level, with its CG global bounds, front
-    /// to back. Invisible overlays and system chrome are left out so they can't hide the pointer.
+    /// Every on-screen window that can hide the pointer (`PointerMap.canHidePointer`), with its CG
+    /// global bounds, front to back.
     static func onScreenWindows() -> [OnScreenWindow] {
         guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return [] }
-        let menuBarLevel = Int(CGWindowLevelForKey(.mainMenuWindow))
         return list.compactMap { w in
-            guard (w[kCGWindowAlpha as String] as? Double ?? 1) > 0,
-                  (w[kCGWindowLayer as String] as? Int ?? 0) < menuBarLevel,
+            guard PointerMap.canHidePointer(layer: w[kCGWindowLayer as String] as? Int ?? 0,
+                                            alpha: w[kCGWindowAlpha as String] as? Double ?? 1),
                   let n = w[kCGWindowNumber as String] as? CGWindowID,
                   let b = w[kCGWindowBounds as String] as? NSDictionary,
                   let rect = CGRect(dictionaryRepresentation: b) else { return nil }
