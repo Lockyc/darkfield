@@ -28,7 +28,8 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 - `Tests/DarkfieldCoreTests/` holds the XCTest suite, run with `swift test`.
 - `Support/Info.plist` is the bundle template; `just bundle` stamps `VERSION` into it.
 - `Support/icon.svg` is the icon master; `just icons` renders `AppIcon.icns` and `icon.png`
-  from it.
+  from it. The menu-bar mark, `StatusItem.menuBarImage`, is drawn in code to match it, so change
+  both together.
 
 ## Invariants
 
