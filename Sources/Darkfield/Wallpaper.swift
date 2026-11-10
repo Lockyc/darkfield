@@ -2,9 +2,13 @@ import AppKit
 import DarkfieldCore
 import ScreenCaptureKit
 
-/// The canvas background. A display source streams that display's system wallpaper window — the
+/// The canvas background. A display source captures that display's system wallpaper window — the
 /// on-screen `Wallpaper` window owned by `com.apple.WindowManager` — so rotating and dynamic
-/// wallpapers show live; an image source is a fixed picture.
+/// wallpapers show; an image source is a fixed picture.
+///
+/// The wallpaper streams only while a window is shared (`live`). Otherwise darkfield takes one frame
+/// and stops: any running capture makes macOS treat the Mac as screen sharing, which shows the
+/// recording indicator and holds back notifications.
 @MainActor
 final class Wallpaper {
     private(set) var image: CGImage?
@@ -13,16 +17,21 @@ final class Wallpaper {
 
     private var source: WallpaperSource?
     private var capture: WindowCapture?
+    /// The wallpaper window `surface` came from.
+    private var surfaceWindow: CGWindowID?
+    private var live = false
 
     /// Called with each fresh shareable-content snapshot; (re)targets the wallpaper window when the
-    /// source or the system's wallpaper window changes.
-    func update(source: WallpaperSource, content: SCShareableContent) {
+    /// source or the system's wallpaper window changes, and streams it only while `live`.
+    func update(source: WallpaperSource, content: SCShareableContent, live: Bool) {
+        self.live = live
         if case .image(let url) = source {
             if self.source != source {
                 self.source = source
                 stopCapture()
                 image = NSImage(contentsOf: url)?.cgImage(forProposedRect: nil, context: nil, hints: nil)
                 surface = nil
+                surfaceWindow = nil
                 onChange?()
             }
             return
@@ -33,7 +42,13 @@ final class Wallpaper {
             $0.owningApplication?.bundleIdentifier == "com.apple.WindowManager" && $0.title == "Wallpaper"
                 && $0.isOnScreen && $0.frame == bounds
         }) else { return }
-        if self.source == source, capture?.windowID == window.windowID { return }
+        let streaming = self.source == source && capture?.windowID == window.windowID
+        let haveFrame = self.source == source && surfaceWindow == window.windowID && surface != nil
+        if !live, haveFrame {
+            stopCapture()
+            return
+        }
+        if streaming { return }
         self.source = source
         image = nil
         stopCapture()
@@ -42,7 +57,9 @@ final class Wallpaper {
             switch event {
             case .frame(let s):
                 self.surface = s
+                self.surfaceWindow = window.windowID
                 self.onChange?()
+                if !self.live { self.stopCapture() }
             case .stopped:
                 // Recreated on the next update; the last frame stays up meanwhile.
                 if self.capture?.windowID == window.windowID { self.capture = nil }

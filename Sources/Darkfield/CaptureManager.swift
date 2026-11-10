@@ -104,7 +104,7 @@ final class CaptureManager {
         defer { polling = false }
         let snapshot = set.generation
         guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false) else { return }
-        wallpaper.update(source: settings.wallpaper, content: content)
+        wallpaper.update(source: settings.wallpaper, content: content, live: !set.ids.isEmpty)
         let byID = Dictionary(content.windows.map { ($0.windowID, $0) }, uniquingKeysWith: { a, _ in a })
 
         set.prune(present: Set(byID.keys), snapshot: snapshot)
