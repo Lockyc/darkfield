@@ -13,11 +13,6 @@ off it, and an audience pointer shows where you're pointing.
 
 ## Install
 
-**Guided (Claude Code):** from a clone of this repo, run `/darkfield:install`. It installs the
-latest release and walks through the Screen Recording permission.
-
-**Manual:**
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lockyc/darkfield/main/install.sh | bash
 ```
