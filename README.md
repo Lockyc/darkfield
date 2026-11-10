@@ -27,7 +27,7 @@ installs `/Applications/darkfield.app` and launches it. Needs macOS 14 or later.
 allow darkfield in System Settings → Privacy & Security → Screen Recording.
 
 darkfield lives in the menu bar and has no Dock icon. Opening it again from Spotlight or Finder
-brings back the ▶ Darkfield window and Settings, which has **Quit darkfield**. It updates itself: it checks daily, and
+brings back the preview and Settings, which has **Quit darkfield**. It updates itself: it checks daily, and
 **Check for Updates…** in its panel checks now.
 
 ## Use
@@ -37,8 +37,9 @@ brings back the ▶ Darkfield window and Settings, which has **Quit darkfield**.
   shortcut in Settings.
 - **Shared windows stack** on the canvas, each scaled to fill it, in the same order as on your
   screen: the shared window you bring to the front is the one the audience sees.
-- **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It keeps working
-  behind other windows. It comes back in front whenever you switch apps, on every Space.
+- **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It sits off screen
+  at the canvas's full 1920×1080. You watch the small preview, which floats above your windows
+  on every Space and never appears in a share.
 - **On a projector**, set your displays to extended (not mirrored). Then choose **Present to →
   Projector** in the panel. The canvas fills the projector, and your mouse stays on your own
   screen.

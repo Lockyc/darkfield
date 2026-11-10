@@ -1,15 +1,22 @@
 import AppKit
 import DarkfieldCore
 
-/// Shows the canvas where `Settings.output` says: the "▶ Darkfield" window a meeting app shares, or
-/// full-screen on a projector display. One output at a time.
+/// Shows the canvas where `Settings.output` says: for a meeting, the "▶ Darkfield" share window a
+/// meeting app captures plus the presenter's preview; or full-screen on a projector display. One
+/// output at a time.
+///
+/// A meeting app shares a window's pixels, so the share window is parked off every display at the
+/// canvas's full pixel size, where the presenter never sees it. Off screen it still counts as on
+/// screen, is offered by window pickers and streams every frame. The presenter watches the preview,
+/// a small floating window that is not shareable.
 @MainActor
 final class OutputController {
-    /// The share target's title, chosen to stand out in meeting apps' window pickers.
+    /// The share window's title, chosen to stand out in meeting apps' window pickers.
     static let meetingTitle = "▶ Darkfield"
 
     private let canvas: CanvasModel
-    private var meetingWindow: NSWindow?
+    private var shareWindow: NSWindow?
+    private var previewWindow: NSWindow?
     private var projectorWindow: NSWindow?
     private(set) var current: Output?
     /// Called when the projector disappears and output falls back to the meeting window.
@@ -20,19 +27,6 @@ final class OutputController {
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.screensChanged() }
         }
-        let ws = NSWorkspace.shared.notificationCenter
-        for name in [NSWorkspace.didActivateApplicationNotification, NSWorkspace.activeSpaceDidChangeNotification] {
-            ws.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.raiseMeeting() }
-            }
-        }
-    }
-
-    /// Keeps the Meeting window in front of the presenter's other windows, without taking focus,
-    /// whenever another app comes forward or the Space changes.
-    private func raiseMeeting() {
-        guard current == .meeting, let w = meetingWindow, w.isVisible else { return }
-        w.orderFrontRegardless()
     }
 
     func apply(_ output: Output) {
@@ -46,7 +40,8 @@ final class OutputController {
                 fallBack(id)
                 return
             }
-            meetingWindow?.orderOut(nil)
+            shareWindow?.orderOut(nil)
+            previewWindow?.orderOut(nil)
             showProjector(on: screen)
             current = output
         }
@@ -66,57 +61,75 @@ final class OutputController {
     }
 
     private func showMeeting() {
-        if meetingWindow == nil {
-            // The canvas fills the whole window, with no title text or buttons, so a meeting app
-            // sharing it shows the canvas alone. It is dragged by its body. The title stays, for
-            // meeting apps' window pickers.
-            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 540),
-                             styleMask: [.titled, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        showShare()
+        showPreview()
+    }
+
+    private func showShare() {
+        if shareWindow == nil {
+            let w = ParkedWindow(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: false)
             w.title = Self.meetingTitle
+            w.backgroundColor = .black
+            w.hasShadow = false
+            w.ignoresMouseEvents = true
+            // Normal level: Chromium's window picker lists only level-0 windows. On every Space,
+            // so it streams whichever Space the presenter is on.
+            w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+            w.contentView = CanvasView(model: canvas)
+            w.isReleasedWhenClosed = false
+            shareWindow = w
+        }
+        parkShare()
+        shareWindow?.orderFrontRegardless()
+    }
+
+    /// Sizes the share window to the canvas in pixels and puts it just beyond the bottom-right
+    /// corner of the union of all displays. It is the canvas size in points: off every display,
+    /// AppKit and ScreenCaptureKit disagree about its scale, and at either scale this is at least
+    /// one pixel per canvas point.
+    private func parkShare() {
+        guard let w = shareWindow else { return }
+        let all = NSScreen.screens.reduce(NSRect.null) { $0.union($1.frame) }
+        let size = Layout.canvas
+        w.setFrame(NSRect(x: all.maxX, y: all.minY - size.height, width: size.width, height: size.height), display: true)
+    }
+
+    private func showPreview() {
+        if previewWindow == nil {
+            // The canvas fills the whole window, with no title text or buttons. It is dragged by
+            // its body and floats above the presenter's windows on every Space, including over a
+            // full-screen presentation.
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 270),
+                             styleMask: [.titled, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+            w.title = "darkfield preview"
             w.titleVisibility = .hidden
             w.titlebarAppearsTransparent = true
             for b in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] { w.standardWindowButton(b)?.isHidden = true }
             w.isMovableByWindowBackground = true
-            // On every Space, including over a full-screen presentation. It stays at the normal
-            // level, which meeting apps' window pickers require (Chromium's lists only level-0
-            // windows), and is brought back to the front instead (`raiseMeeting`).
+            w.level = .floating
+            w.sharingType = .none
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             w.contentAspectRatio = Layout.canvas
             w.contentView = CanvasView(model: canvas)
             w.isReleasedWhenClosed = false
-            if let saved = Self.savedMeetingFrame() { w.setFrame(saved, display: false) } else { w.center() }
-            Self.holdCanvasResolution(w)
-            NotificationCenter.default.addObserver(forName: NSWindow.didChangeBackingPropertiesNotification, object: w, queue: .main) { [weak w] _ in
-                MainActor.assumeIsolated { if let w { Self.holdCanvasResolution(w) } }
-            }
+            if let saved = Self.savedPreviewFrame() { w.setFrame(saved, display: false) } else { w.center() }
             for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification] {
                 NotificationCenter.default.addObserver(forName: name, object: w, queue: .main) { [weak w] _ in
-                    MainActor.assumeIsolated { if let w { UserDefaults.standard.set(NSStringFromRect(w.frame), forKey: Self.meetingFrameKey) } }
+                    MainActor.assumeIsolated { if let w { UserDefaults.standard.set(NSStringFromRect(w.frame), forKey: Self.previewFrameKey) } }
                 }
             }
-            meetingWindow = w
+            previewWindow = w
         }
-        meetingWindow?.orderFrontRegardless()
+        previewWindow?.orderFrontRegardless()
     }
 
-    /// Keeps the Meeting window at least `Layout.meetingMinimum` for its display, growing it in
-    /// place (top-left corner fixed) when it is smaller.
-    private static func holdCanvasResolution(_ w: NSWindow) {
-        let min = Layout.meetingMinimum(backingScale: w.backingScaleFactor)
-        w.contentMinSize = min
-        let content = w.contentRect(forFrameRect: w.frame)
-        guard content.width < min.width - 0.5 else { return }
-        let grown = w.frameRect(forContentRect: NSRect(x: content.minX, y: content.maxY - min.height, width: min.width, height: min.height))
-        w.setFrame(grown, display: true)
-    }
+    private static let previewFrameKey = "PreviewWindowFrame"
 
-    private static let meetingFrameKey = "MeetingWindowFrame"
-
-    /// Where the presenter last left the Meeting window, if that spot is still on a connected
+    /// Where the presenter last left the preview, if that spot is still on a connected
     /// display. Kept by darkfield rather than AppKit's frame autosave, which restores a frame
     /// saved on a secondary display onto the main one.
-    private static func savedMeetingFrame() -> NSRect? {
-        guard let s = UserDefaults.standard.string(forKey: meetingFrameKey) else { return nil }
+    private static func savedPreviewFrame() -> NSRect? {
+        guard let s = UserDefaults.standard.string(forKey: previewFrameKey) else { return nil }
         let r = NSRectFromString(s)
         guard r.width > 0, r.height > 0,
               NSScreen.screens.contains(where: { $0.frame.intersects(r) }) else { return nil }
@@ -144,6 +157,7 @@ final class OutputController {
     }
 
     private func screensChanged() {
+        if current == .meeting { parkShare() }
         guard case .projector(let id) = current else { return }
         if let screen = Self.screen(for: id), CGDisplayIsInMirrorSet(id) == 0 {
             projectorWindow?.setFrame(screen.frame, display: true)
@@ -164,4 +178,9 @@ final class OutputController {
     static func screen(for id: CGDirectDisplayID) -> NSScreen? {
         NSScreen.screens.first { ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) == id }
     }
+}
+
+/// A window AppKit leaves where it is put, even off every display.
+private final class ParkedWindow: NSWindow {
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
 }

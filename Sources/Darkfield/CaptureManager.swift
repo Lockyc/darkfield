@@ -50,7 +50,7 @@ final class CaptureManager {
 
     /// Toggles the window under `p` (CG global) in or out of the shared set: the topmost window
     /// there, when it is an app's normal window. nil when there is none (the desktop, or a panel,
-    /// toolbar or darkfield's Meeting window is on top).
+    /// toolbar or darkfield's preview is on top).
     func toggleWindow(at p: CGPoint) async -> ToggleResult? {
         guard let content = try? await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true) else { return nil }
         let order = Dictionary(uniqueKeysWithValues: visibleWindows().enumerated().map { ($1.id, $0) })

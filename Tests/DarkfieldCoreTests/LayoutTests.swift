@@ -7,11 +7,6 @@ final class LayoutTests: XCTestCase {
         Layout.frames(sources: sizes.map { CGRect(origin: .zero, size: $0) }, margin: margin)
     }
 
-    func testMeetingMinimumIsTheCanvasInPixels() {
-        XCTAssertEqual(Layout.meetingMinimum(backingScale: 1), CGSize(width: 1920, height: 1080))
-        XCTAssertEqual(Layout.meetingMinimum(backingScale: 2), CGSize(width: 960, height: 540))
-    }
-
     func testSingleFillsWithZeroMargin() {
         XCTAssertEqual(frames([CGSize(width: 1600, height: 900)]), [CGRect(x: 0, y: 0, width: 1920, height: 1080)])
     }
