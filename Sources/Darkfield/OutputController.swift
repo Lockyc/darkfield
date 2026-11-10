@@ -5,10 +5,10 @@ import DarkfieldCore
 /// meeting app captures plus the presenter's preview; or full-screen on a projector display. One
 /// output at a time.
 ///
-/// A meeting app shares a window's pixels, so the share window is parked off every display at the
-/// canvas's full pixel size, where the presenter never sees it. Off screen it still counts as on
-/// screen, is offered by window pickers and streams every frame. The presenter watches the preview,
-/// a small floating window that is not shareable.
+/// A meeting app shares a window's pixels, so the share window is parked at the canvas's full
+/// pixel size with all but one corner point off the displays, where the presenter never sees it.
+/// It still counts as on screen, is offered by window pickers and streams every frame. The
+/// presenter watches the preview, a small floating window that is not shareable.
 @MainActor
 final class OutputController {
     /// The share window's title, chosen to stand out in meeting apps' window pickers.
@@ -86,15 +86,17 @@ final class OutputController {
         shareWindow?.orderFrontRegardless()
     }
 
-    /// Sizes the share window to the canvas in pixels and puts it just beyond the bottom-right
-    /// corner of the union of all displays. It is the canvas size in points: off every display,
-    /// AppKit and ScreenCaptureKit disagree about its scale, and at either scale this is at least
-    /// one pixel per canvas point.
+    /// Sizes the share window to the canvas and parks it per `Parking`, so pickers can draw its
+    /// thumbnail. It is the canvas size in points, which is at least one pixel per canvas point at
+    /// any display scale.
     private func parkShare() {
         guard let w = shareWindow else { return }
-        let all = NSScreen.screens.reduce(NSRect.null) { $0.union($1.frame) }
-        let size = Layout.canvas
-        w.setFrame(NSRect(x: all.maxX, y: all.minY - size.height, width: size.width, height: size.height), display: true)
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        let displays = NSScreen.screens.map { f in
+            CGRect(x: f.frame.minX, y: primaryHeight - f.frame.maxY, width: f.frame.width, height: f.frame.height)
+        }
+        let cg = Parking.frame(size: Layout.canvas, displays: displays)
+        w.setFrame(ScreenSpace.toAppKit(cg, primaryHeight: primaryHeight), display: true)
     }
 
     /// Brings the preview back while presenting to a meeting; does nothing on a projector.
