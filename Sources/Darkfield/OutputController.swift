@@ -112,7 +112,7 @@ final class OutputController {
             w.title = "darkfield preview"
             w.titleVisibility = .hidden
             w.titlebarAppearsTransparent = true
-            for b in [NSWindow.ButtonType.miniaturizeButton, .zoomButton] { w.standardWindowButton(b)?.isHidden = true }
+            for b in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] { w.standardWindowButton(b)?.isHidden = true }
             NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.onPreviewShown?(false) }
             }
@@ -121,7 +121,7 @@ final class OutputController {
             w.sharingType = .none
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             w.contentAspectRatio = Layout.canvas
-            w.contentView = CanvasView(model: canvas)
+            w.contentView = PreviewView(canvas: CanvasView(model: canvas)) { [weak w] in w?.performClose(nil) }
             w.isReleasedWhenClosed = false
             if let saved = Self.savedPreviewFrame() { w.setFrame(saved, display: false) } else { w.center() }
             for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification] {
@@ -190,6 +190,38 @@ final class OutputController {
     static func screen(for id: CGDirectDisplayID) -> NSScreen? {
         NSScreen.screens.first { ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) == id }
     }
+}
+
+/// The preview's content: the canvas, with a close button over its top-left corner. The window's
+/// own close button doesn't draw over the canvas, so the preview carries its own.
+private final class PreviewView: NSView {
+    private let onClose: () -> Void
+
+    init(canvas: CanvasView, onClose: @escaping () -> Void) {
+        self.onClose = onClose
+        super.init(frame: .zero)
+        canvas.autoresizingMask = [.width, .height]
+        addSubview(canvas)
+        let close = NSButton(image: NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Close preview")!,
+                             target: nil, action: nil)
+        close.target = self
+        close.action = #selector(closePressed)
+        close.isBordered = false
+        close.symbolConfiguration = .init(pointSize: 20, weight: .regular)
+            .applying(.init(paletteColors: [.white, NSColor.black.withAlphaComponent(0.55)]))
+        close.toolTip = "Close preview"
+        close.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(close)
+        NSLayoutConstraint.activate([
+            close.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            close.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+        ])
+        canvas.frame = bounds
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    @objc private func closePressed() { onClose() }
 }
 
 /// A window AppKit leaves where it is put, even off every display.
