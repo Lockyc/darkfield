@@ -38,7 +38,7 @@ brings back the ▶ Darkfield window and Settings, which has **Quit darkfield**.
 - **Shared windows stack** on the canvas, each scaled to fill it, in the same order as on your
   screen: the shared window you bring to the front is the one the audience sees.
 - **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It keeps working
-  behind other windows. It floats above your other windows on every Space.
+  behind other windows. It comes back in front whenever you switch apps, on every Space.
 - **On a projector**, set your displays to extended (not mirrored). Then choose **Present to →
   Projector** in the panel. The canvas fills the projector, and your mouse stays on your own
   screen.
