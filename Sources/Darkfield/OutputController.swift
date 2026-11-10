@@ -85,6 +85,10 @@ final class OutputController {
             w.contentView = CanvasView(model: canvas)
             w.isReleasedWhenClosed = false
             if let saved = Self.savedMeetingFrame() { w.setFrame(saved, display: false) } else { w.center() }
+            Self.holdCanvasResolution(w)
+            NotificationCenter.default.addObserver(forName: NSWindow.didChangeBackingPropertiesNotification, object: w, queue: .main) { [weak w] _ in
+                MainActor.assumeIsolated { if let w { Self.holdCanvasResolution(w) } }
+            }
             for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification] {
                 NotificationCenter.default.addObserver(forName: name, object: w, queue: .main) { [weak w] _ in
                     MainActor.assumeIsolated { if let w { UserDefaults.standard.set(NSStringFromRect(w.frame), forKey: Self.meetingFrameKey) } }
@@ -93,6 +97,17 @@ final class OutputController {
             meetingWindow = w
         }
         meetingWindow?.orderFrontRegardless()
+    }
+
+    /// Keeps the Meeting window at least `Layout.meetingMinimum` for its display, growing it in
+    /// place (top-left corner fixed) when it is smaller.
+    private static func holdCanvasResolution(_ w: NSWindow) {
+        let min = Layout.meetingMinimum(backingScale: w.backingScaleFactor)
+        w.contentMinSize = min
+        let content = w.contentRect(forFrameRect: w.frame)
+        guard content.width < min.width - 0.5 else { return }
+        let grown = w.frameRect(forContentRect: NSRect(x: content.minX, y: content.maxY - min.height, width: min.width, height: min.height))
+        w.setFrame(grown, display: true)
     }
 
     private static let meetingFrameKey = "MeetingWindowFrame"

@@ -7,6 +7,13 @@ public enum Layout {
     /// The canvas, in logical points. Canvas coordinates have a top-left origin, y down.
     public static let canvas = CGSize(width: 1920, height: 1080)
 
+    /// The smallest Meeting window, in points, on a display of `backingScale`: one window pixel per
+    /// canvas point. A meeting app shares the window's pixels, so anything smaller sends the
+    /// audience a downscaled canvas.
+    public static func meetingMinimum(backingScale: CGFloat) -> CGSize {
+        CGSize(width: canvas.width / backingScale, height: canvas.height / backingScale)
+    }
+
     /// Canvas rects for `sources` (the windows' current CG global frames), one per source, in the
     /// same order. `margin` insets the canvas edge.
     public static func frames(sources: [CGRect], margin: CGFloat, canvas: CGSize = canvas) -> [CGRect] {
