@@ -39,7 +39,8 @@ brings back the preview and Settings, which has **Quit darkfield**. It updates i
   screen: the shared window you bring to the front is the one the audience sees.
 - **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It sits off screen
   at the canvas's full 1920×1080. You watch the small preview, which floats above your windows
-  on every Space and never appears in a share.
+  on every Space and never appears in a share. Its close button hides it. Sharing a window,
+  **Show Preview Window** in the panel, or opening darkfield again brings it back.
 - **On a projector**, set your displays to extended (not mirrored). Then choose **Present to →
   Projector** in the panel. The canvas fills the projector, and your mouse stays on your own
   screen.

@@ -24,6 +24,9 @@ final class AppModel: ObservableObject {
     @Published private(set) var displays: [Display] = []
     @Published private(set) var canCapture = CGPreflightScreenCaptureAccess()
     @Published var notice: String?
+    /// Whether the floating preview window is on screen.
+    @Published var previewShown = false
+    var showPreview: (() -> Void)?
     /// How many hotkey recorders are listening. While any is, the live hotkeys are released so they
     /// don't swallow the keystroke.
     @Published var listeningRecorders = 0 {

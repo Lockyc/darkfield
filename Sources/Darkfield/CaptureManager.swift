@@ -15,6 +15,8 @@ final class CaptureManager {
     private(set) var onScreen: [OnScreenWindow] = []
     var settings = Settings() { didSet { relayout() } }
     var onChange: (() -> Void)?
+    /// Called when a window joins the shared set.
+    var onShared: (() -> Void)?
     /// darkfield's own click-through overlays (the share rings): never the window under the mouse.
     var ignoredWindows: () -> Set<CGWindowID> = { [] }
 
@@ -77,6 +79,7 @@ final class CaptureManager {
             drop(id)
             relayout()
         }
+        if result == .added { onShared?() }
         Task { await poll() }
         return result
     }

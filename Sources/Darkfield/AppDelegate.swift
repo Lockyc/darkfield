@@ -42,6 +42,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.model.refreshRows()
             self?.rings.update()
         }
+        captures.onShared = { [weak self] in self?.outputs.showPreviewIfMeeting() }
+        outputs.onPreviewShown = { [weak self] shown in self?.model.previewShown = shown }
+        model.showPreview = { [weak self] in self?.outputs.showPreviewIfMeeting() }
         captures.ignoredWindows = { [weak self] in self?.rings.windowIDs ?? [] }
         captures.start()
         startPointer()

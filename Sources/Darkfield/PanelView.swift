@@ -24,6 +24,14 @@ struct PanelView: View {
             CanvasPreview(canvas: model.canvas)
                 .frame(width: 320, height: 180)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
+            HStack {
+                Spacer()
+                Button("Show Preview Window") { model.showPreview?() }
+                    .controlSize(.small)
+                    .disabled(model.previewShown || model.settings.output != .meeting)
+                    .help(model.settings.output != .meeting ? "Presenting to the projector"
+                          : model.previewShown ? "The preview window is open" : "")
+            }
 
             windowList
 

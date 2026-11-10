@@ -21,6 +21,8 @@ final class OutputController {
     private(set) var current: Output?
     /// Called when the projector disappears and output falls back to the meeting window.
     var onFallback: ((String) -> Void)?
+    /// Called with whether the preview is on screen, whenever that changes.
+    var onPreviewShown: ((Bool) -> Void)?
 
     init(canvas: CanvasModel) {
         self.canvas = canvas
@@ -42,6 +44,7 @@ final class OutputController {
             }
             shareWindow?.orderOut(nil)
             previewWindow?.orderOut(nil)
+            onPreviewShown?(false)
             showProjector(on: screen)
             current = output
         }
@@ -94,17 +97,25 @@ final class OutputController {
         w.setFrame(NSRect(x: all.maxX, y: all.minY - size.height, width: size.width, height: size.height), display: true)
     }
 
+    /// Brings the preview back while presenting to a meeting; does nothing on a projector.
+    func showPreviewIfMeeting() {
+        if current == .meeting { showPreview() }
+    }
+
     private func showPreview() {
         if previewWindow == nil {
-            // The canvas fills the whole window, with no title text or buttons. It is dragged by
-            // its body and floats above the presenter's windows on every Space, including over a
-            // full-screen presentation.
+            // The canvas fills the whole window, with only a close button over it. It is dragged
+            // by its body and floats above the presenter's windows on every Space, including over
+            // a full-screen presentation.
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 270),
-                             styleMask: [.titled, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+                             styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
             w.title = "darkfield preview"
             w.titleVisibility = .hidden
             w.titlebarAppearsTransparent = true
-            for b in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] { w.standardWindowButton(b)?.isHidden = true }
+            for b in [NSWindow.ButtonType.miniaturizeButton, .zoomButton] { w.standardWindowButton(b)?.isHidden = true }
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.onPreviewShown?(false) }
+            }
             w.isMovableByWindowBackground = true
             w.level = .floating
             w.sharingType = .none
@@ -121,6 +132,7 @@ final class OutputController {
             previewWindow = w
         }
         previewWindow?.orderFrontRegardless()
+        onPreviewShown?(true)
     }
 
     private static let previewFrameKey = "PreviewWindowFrame"
