@@ -58,6 +58,9 @@ final class ShareRings {
         w.backgroundColor = .clear
         w.hasShadow = false
         w.ignoresMouseEvents = true
+        // Not a share target: a meeting app's window picker that offers it shares a transparent
+        // window, which reads as black.
+        w.sharingType = .none
         w.isReleasedWhenClosed = false
         w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
         let view = NSView()
