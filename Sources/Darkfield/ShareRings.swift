@@ -2,9 +2,11 @@ import AppKit
 import DarkfieldCore
 
 /// An amber ring around every shared window on the presenter's screen, for as long as it is
-/// shared. Each ring is its own click-through window kept directly above its shared window in the
-/// stacking order, so a window brought in front of the shared one covers its ring too. Rings follow
-/// their windows ten times a second, hide while the window is off screen, and fade out on unshare.
+/// shared. Each ring is its own click-through window at the floating level, above normal windows,
+/// so a window brought in front of the shared one still shows its ring. The level keeps the rings
+/// out of meeting apps' window pickers: Chromium's lists only level-0 windows, and a ring offered
+/// there shares as black. Rings follow their windows ten times a second, hide while the window is
+/// off screen, and fade out on unshare.
 @MainActor
 final class ShareRings {
     static let color = NSColor(calibratedRed: 0.96, green: 0.73, blue: 0.26, alpha: 1)
@@ -48,7 +50,7 @@ final class ShareRings {
             }
             let frame = ScreenSpace.toAppKit(cg, primaryHeight: primaryHeight).insetBy(dx: -Self.width, dy: -Self.width)
             if ring.frame != frame { ring.setFrame(frame, display: true) }
-            ring.order(.above, relativeTo: Int(id))
+            if !ring.isVisible { ring.orderFrontRegardless() }
         }
     }
 
@@ -58,8 +60,8 @@ final class ShareRings {
         w.backgroundColor = .clear
         w.hasShadow = false
         w.ignoresMouseEvents = true
-        // Not a share target: a meeting app's window picker that offers it shares a transparent
-        // window, which reads as black.
+        w.level = .floating
+        // Not a share target, for pickers that honour the sharing state.
         w.sharingType = .none
         w.isReleasedWhenClosed = false
         w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]

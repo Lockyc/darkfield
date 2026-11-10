@@ -20,6 +20,19 @@ final class OutputController {
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.screensChanged() }
         }
+        let ws = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.didActivateApplicationNotification, NSWorkspace.activeSpaceDidChangeNotification] {
+            ws.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.raiseMeeting() }
+            }
+        }
+    }
+
+    /// Keeps the Meeting window in front of the presenter's other windows, without taking focus,
+    /// whenever another app comes forward or the Space changes.
+    private func raiseMeeting() {
+        guard current == .meeting, let w = meetingWindow, w.isVisible else { return }
+        w.orderFrontRegardless()
     }
 
     func apply(_ output: Output) {
@@ -64,9 +77,9 @@ final class OutputController {
             w.titlebarAppearsTransparent = true
             for b in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] { w.standardWindowButton(b)?.isHidden = true }
             w.isMovableByWindowBackground = true
-            // Stays above the presenter's windows, on every Space, including over a full-screen
-            // presentation.
-            w.level = .floating
+            // On every Space, including over a full-screen presentation. It stays at the normal
+            // level, which meeting apps' window pickers require (Chromium's lists only level-0
+            // windows), and is brought back to the front instead (`raiseMeeting`).
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             w.contentAspectRatio = Layout.canvas
             w.contentView = CanvasView(model: canvas)
