@@ -60,18 +60,19 @@ sparkle-bin:
     @echo "{{justfile_directory()}}/.build/artifacts/sparkle/Sparkle/bin"
 
 # Build and launch the local bundle
-run: bundle quit
+run: quit bundle
     @just launch {{app}}
 
 # Install to /Applications and launch
-install: bundle quit
+install: quit bundle
     rm -rf /Applications/darkfield.app
     cp -R {{app}} /Applications/darkfield.app
     @# the commit this build came from: lets a later release (lockstep.sh) tell whether it is newer before replacing it
     xattr -w com.lockyc.build-commit "$(git rev-parse HEAD)$(git status --porcelain | grep -q . && echo -dirty)" /Applications/darkfield.app
     @just launch /Applications/darkfield.app
 
-# Quits any running Darkfield, force-killing one still alive after 3s.
+# Quits any running Darkfield, force-killing one still alive after 3s. Runs before `bundle`: a
+# Darkfield whose bundle is rewritten under it fails its screen-recording check and prompts.
 [private]
 quit:
     #!/usr/bin/env bash
