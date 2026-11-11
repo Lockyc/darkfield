@@ -36,7 +36,8 @@ final class ShareRings {
         guard !ids.isEmpty else { return }
         let list = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]) ?? []
         let stack: [OnScreenWindow] = list.compactMap { w in
-            guard (w[kCGWindowAlpha as String] as? Double ?? 1) > 0,
+            guard RingCover.canCover(layer: w[kCGWindowLayer as String] as? Int ?? 0,
+                                     alpha: w[kCGWindowAlpha as String] as? Double ?? 1),
                   let id = w[kCGWindowNumber as String] as? CGWindowID,
                   let b = w[kCGWindowBounds as String] as? NSDictionary, let r = CGRect(dictionaryRepresentation: b) else { return nil }
             return OnScreenWindow(id: id, frame: r)

@@ -27,6 +27,17 @@ final class RingCoverTests: XCTestCase {
         XCTAssertEqual(RingCover.covers(ring: ring, shared: 1, stack: stack, ignoring: [9]), [])
     }
 
+    func testOnlyVisibleWindowsAtOrBelowTheRingsLevelCanCoverIt() {
+        let floating = Int(CGWindowLevelForKey(.floatingWindow))
+        XCTAssertTrue(RingCover.canCover(layer: 0, alpha: 1))
+        XCTAssertTrue(RingCover.canCover(layer: floating, alpha: 1))
+        XCTAssertFalse(RingCover.canCover(layer: 0, alpha: 0))
+        // Notification Centre's full-display banner host (layer 23) and the menu bar already draw
+        // over the ring; cutting for them blanks the whole ring while a banner shows.
+        XCTAssertFalse(RingCover.canCover(layer: 23, alpha: 1))
+        XCTAssertFalse(RingCover.canCover(layer: Int(CGWindowLevelForKey(.mainMenuWindow)), alpha: 1))
+    }
+
     func testSharedWindowAbsentCoversNothing() {
         XCTAssertEqual(RingCover.covers(ring: ring, shared: 1, stack: [w(2, 0, 0, 500, 500)]), [])
     }

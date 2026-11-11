@@ -4,6 +4,14 @@ import CoreGraphics
 /// so it is cut away wherever a window in front of the shared one overlaps it, to look as if it
 /// sat directly above its window.
 public enum RingCover {
+    /// Whether a window with this layer and alpha can sit between a ring and the viewer. A ring is
+    /// at the floating level, so a window above that level already draws over it: cutting for one
+    /// is redundant when it is opaque, and blanks the ring when it is a transparent overlay, such as
+    /// Notification Centre's display-sized banner host.
+    public static func canCover(layer: Int, alpha: Double) -> Bool {
+        alpha > 0 && layer <= Int(CGWindowLevelForKey(.floatingWindow))
+    }
+
     /// The rects of `ring` (CG global) covered by windows in front of `shared` in `stack` (every
     /// on-screen window, front to back), skipping `ignoring`. Returned in ring-local points with a
     /// bottom-left origin, y up, as the ring's layer draws.
