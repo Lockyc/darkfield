@@ -26,7 +26,7 @@ final class CameraController: ObservableObject {
     private var running = false
     /// Every on/off decision, so a camera light that stays on can be traced:
     /// `log show --predicate 'subsystem == "com.lockyc.darkfield"' --info`.
-    static let log = Logger(subsystem: "com.lockyc.darkfield", category: "camera")
+    nonisolated static let log = Logger(subsystem: "com.lockyc.darkfield", category: "camera")
 
     init() {
         pipeline = Pipeline(preview: previewLayer)

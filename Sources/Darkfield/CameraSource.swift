@@ -35,7 +35,7 @@ final class CameraSource {
         refresh()
     }
 
-    private static func devices() -> [AVCaptureDevice] {
+    nonisolated private static func devices() -> [AVCaptureDevice] {
         AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .external, .continuityCamera],
                                          mediaType: .video, position: .unspecified).devices
     }
@@ -85,7 +85,7 @@ final class CameraSource {
     }
 
     /// 1920×1080 at 30 fps when the camera has it, else its largest format up to 1080 lines.
-    private static func prefer1080p30(_ device: AVCaptureDevice) {
+    nonisolated private static func prefer1080p30(_ device: AVCaptureDevice) {
         func supports30(_ f: AVCaptureDevice.Format) -> Bool {
             f.videoSupportedFrameRateRanges.contains { $0.minFrameRate <= 30 && $0.maxFrameRate >= 30 }
         }
