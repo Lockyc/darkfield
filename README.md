@@ -30,6 +30,10 @@ Allow darkfield in System Settings → Privacy & Security → Screen Recording; 
 panel says so and has a button that opens the setting. darkfield lives in the menu bar, with no
 Dock icon. Opening it again from Spotlight or Finder brings back the preview.
 
+The first time you turn on the camera **Preview**, allow darkfield to use the camera. Darkfield
+Camera is a system extension: allow it once in System Settings → General → Login Items &
+Extensions → Camera Extensions; the panel has a button that opens it.
+
 ## Features
 
 - **Share a window** by pressing **⇧⌘1** over it, or with **Add Window…** in the panel; press
@@ -50,14 +54,23 @@ Dock icon. Opening it again from Spotlight or Finder brings back the preview.
 - **The audience pointer** is your cursor on the canvas, with an amber halo behind it so viewers
   find it. The halo fades after 10 seconds of stillness; shake the mouse to enlarge it, and clicks
   ripple. Turn it off in the panel, or give it a shortcut in Settings.
-- **The panel** (the menu-bar icon) holds the live preview, the shared windows (✕ removes one),
-  **Present to**, the margin and the pointer toggle.
+- **Darkfield Camera** shows you to any video app — Zoom, Teams, FaceTime, a browser call — from
+  any camera you choose, with your background blurred and the shot framed to keep you in view,
+  easing after you like Center Stage. Pick **Darkfield Camera** as the app's camera. **Blur** and
+  **Framing** each switch on or off, with a strength and a Wide–Tight setting. The camera runs only
+  while an app is using Darkfield Camera or the panel's **Preview** is on, and Preview turns off
+  when the panel closes. If the camera you chose isn't connected, the call sees a dark frame,
+  never another camera.
+- **The panel** (the menu-bar icon) has two columns. The left holds the live canvas preview, the
+  shared windows (✕ removes one), **Present to**, the margin and the pointer toggle; the right
+  holds the camera: its preview (**Mirror preview** flips only your view of it), the camera
+  choice, Blur and Framing.
 - **Settings** — the share and pointer shortcuts, the halo's fade time, and the wallpaper behind
   the canvas: the primary display's, another display's, or an image you choose.
 
 ## Status
 
-In use, `0.x`. Planned next: recording, a virtual camera and cropping. The full list:
+In use, `0.x`. Planned next: recording, the canvas as a camera, and cropping. The full list:
 [docs/FOLLOWUPS.md](docs/FOLLOWUPS.md).
 
 ## Development

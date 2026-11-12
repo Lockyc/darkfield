@@ -24,7 +24,10 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 - `Sources/DarkfieldCore/` uses Foundation/CoreGraphics only. It holds layout, pointer
   mapping and timing, the shared-window set and settings. **Every unit test lives here**; keep
   AppKit out of it.
-- `Sources/Darkfield/` is the AppKit executable: capture, canvas layers, outputs and the panel.
+- `Sources/Darkfield/` is the AppKit executable: capture, canvas layers, outputs and the panel,
+  plus Darkfield Camera's capture, processing and relay (`Camera*.swift`).
+- `Sources/DarkfieldCameraExtension/` is the CoreMediaIO camera system extension. It shares only
+  `DarkfieldCore` (`CameraIDs`, `IdleFrame`) with the app.
 - `Tests/DarkfieldCoreTests/` holds the XCTest suite, run with `swift test`.
 - `Support/Info.plist` is the bundle template; `just bundle` stamps `VERSION` into it.
 - `Support/icon.svg` is the icon master; `just icons` renders `AppIcon.icns` and `icon.png`
@@ -42,6 +45,11 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
   sent.
 - Core geometry is in CG global coordinates (top-left origin, y down). AppKit points are
   converted at the edge.
+- Darkfield Camera's extension never opens a camera. darkfield captures and processes; the
+  extension relays darkfield's latest frame, or black once it is stale (`IdleFrame`).
+- The physical camera runs only while `CameraDemand` wants it: an app streaming from Darkfield
+  Camera, or Preview on with the panel open. A missing chosen camera means a dark frame, never
+  another camera.
 - The only global hotkeys are the ones in `Settings`. The window toggle defaults to ⇧⌘1,
   Screegle's. Every other hotkey ships unassigned.
 
@@ -63,7 +71,15 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 
 - `just test`, `just gate`; `just run` builds and launches `build/darkfield.app`.
 - Verify UI changes in the running app with `winshot`. Screen Recording permission must be
-  granted to the built bundle.
+  granted to the built bundle. The panel is a transient popover that `winshot` doesn't list and
+  that closes on focus loss (turning Preview off), so a camera check needs the presenter's own
+  screenshot; the camera's on/off decisions are logged under subsystem `com.lockyc.darkfield`.
+- `just bundle` embeds the camera extension only when a Developer ID identity and both
+  provisioning profiles (`darkfield.provisionprofile`, `camera.provisionprofile` in
+  `~/.config/darkfield`) are present; the restricted entitlements can't be signed without them.
+  The app is signed with `Support/Darkfield.entitlements` (camera only) or, with the extension,
+  `Support/Darkfield-Extension.entitlements`. A system extension activates only from
+  `/Applications`, so test it with `just install`.
 - Branches: `main` + `dev`. Work lands on `dev`. A release fast-forwards `main` from `dev`
   (`git merge --ff-only dev`). Docs-only changes may land on `main` and are forward-merged into
   `dev` immediately.
