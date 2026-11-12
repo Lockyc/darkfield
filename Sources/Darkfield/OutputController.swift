@@ -34,6 +34,10 @@ final class OutputController {
     /// posts them around Meet's). Any app may post them; they carry nothing.
     static let pickerWillOpen = Notification.Name("com.lockyc.darkfield.pickerWillOpen")
     static let pickerDidClose = Notification.Name("com.lockyc.darkfield.pickerDidClose")
+    /// darkfield's answer to `pickerWillOpen`, once the share window is on screen (or there is
+    /// nothing to show). A picker that lists windows as it opens must wait for it, or it opens
+    /// with the window still parked.
+    static let pickerReady = Notification.Name("com.lockyc.darkfield.pickerReady")
 
     init(canvas: CanvasModel) {
         self.canvas = canvas
@@ -43,6 +47,11 @@ final class OutputController {
         let center = DistributedNotificationCenter.default()
         center.addObserver(forName: Self.pickerWillOpen, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.showForPicking() }
+            // The next turn of the run loop, once the window server has the move.
+            DispatchQueue.main.async {
+                DistributedNotificationCenter.default().postNotificationName(
+                    Self.pickerReady, object: nil, userInfo: nil, deliverImmediately: true)
+            }
         }
         center.addObserver(forName: Self.pickerDidClose, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.endPicking() }
