@@ -52,7 +52,8 @@ bundle:
     "${sign[@]}" "$sparkle/Versions/B/XPCServices/Installer.xpc"
     "${sign[@]}" --preserve-metadata=entitlements "$sparkle/Versions/B/XPCServices/Downloader.xpc"
     "${sign[@]}" "$sparkle/Versions/B/Autoupdate" "$sparkle/Versions/B/Updater.app" "$sparkle"
-    "${sign[@]}" {{app}}
+    # The hardened runtime refuses the camera, with no prompt, to an app without this entitlement.
+    "${sign[@]}" --entitlements Support/Darkfield.entitlements {{app}}
 
 # Print the directory holding Sparkle's sign_update and generate_keys (resolving packages first)
 sparkle-bin:
