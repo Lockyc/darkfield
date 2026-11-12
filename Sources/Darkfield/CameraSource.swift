@@ -16,7 +16,11 @@ final class CameraSource {
 
     private let session = AVCaptureSession()
     private let output = AVCaptureVideoDataOutput()
-    private let queue = DispatchQueue(label: "com.lockyc.darkfield.camera.capture")
+    /// Frames arrive here.
+    private let queue = DispatchQueue(label: "com.lockyc.darkfield.camera.frames")
+    /// Starting, stopping and configuring the session happen here, never on the frame queue:
+    /// `startRunning` waits on the frame queue, so running it there stalls it for seconds.
+    private let sessionQueue = DispatchQueue(label: "com.lockyc.darkfield.camera.session")
     private let sink = FrameSink()
     private var runningID: String?
 
@@ -49,14 +53,14 @@ final class CameraSource {
         onCamerasChanged?()
     }
 
-    /// Every touch of the session runs on the capture queue, in call order: a stop followed by a
+    /// Every touch of the session runs on the session queue, in call order: a stop followed by a
     /// start can't interleave their input changes.
     func start(id: String) {
         guard runningID != id else { return }
         stop()
         runningID = id
         let session = session
-        queue.async {
+        sessionQueue.async {
             guard let device = Self.devices().first(where: { $0.uniqueID == id }),
                   let input = try? AVCaptureDeviceInput(device: device) else {
                 CameraController.log.error("capture: can't open camera")
@@ -75,7 +79,7 @@ final class CameraSource {
         guard runningID != nil else { return }
         runningID = nil
         let session = session
-        queue.async {
+        sessionQueue.async {
             session.stopRunning()
             session.beginConfiguration()
             session.inputs.forEach(session.removeInput)
