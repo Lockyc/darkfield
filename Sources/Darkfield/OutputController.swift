@@ -73,6 +73,7 @@ final class OutputController {
         pickingExpiry?.invalidate()
         pickingExpiry = nil
         shareWindow?.ignoresMouseEvents = true
+        shareWindow?.collectionBehavior.insert(.stationary)
         if current == .meeting { parkShare() }
     }
 
