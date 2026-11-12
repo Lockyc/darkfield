@@ -23,12 +23,56 @@ final class OutputController {
     var onFallback: ((String) -> Void)?
     /// Called with whether the preview is on screen, whenever that changes.
     var onPreviewShown: ((Bool) -> Void)?
+    /// Set while a window picker is open and the share window is shown for clicking; its
+    /// expiry parks the window again if the picker's close is never announced.
+    private var pickingExpiry: Timer?
+    /// How long the share window stays shown for a picker whose close never arrives.
+    private static let pickingTimeout: TimeInterval = 120
+
+    /// Distributed notifications another app posts around a click-to-pick window picker (cooee
+    /// posts them around Meet's). Any app may post them; they carry nothing.
+    static let pickerWillOpen = Notification.Name("com.lockyc.darkfield.pickerWillOpen")
+    static let pickerDidClose = Notification.Name("com.lockyc.darkfield.pickerDidClose")
 
     init(canvas: CanvasModel) {
         self.canvas = canvas
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.screensChanged() }
         }
+        let center = DistributedNotificationCenter.default()
+        center.addObserver(forName: Self.pickerWillOpen, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.showForPicking() }
+        }
+        center.addObserver(forName: Self.pickerDidClose, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.endPicking() }
+        }
+    }
+
+    /// Shows the share window centred on the main display, above other windows, so a picker that
+    /// selects by clicking can reach it. Meeting output only.
+    private func showForPicking() {
+        guard current == .meeting, let w = shareWindow, let main = NSScreen.screens.first else { return }
+        let primaryHeight = main.frame.height
+        let display = CGRect(x: main.frame.minX, y: primaryHeight - main.frame.maxY,
+                             width: main.frame.width, height: main.frame.height)
+        let cg = Parking.pickingFrame(size: Layout.canvas, display: display)
+        w.level = .floating
+        w.setFrame(ScreenSpace.toAppKit(cg, primaryHeight: primaryHeight), display: true)
+        w.orderFrontRegardless()
+        pickingExpiry?.invalidate()
+        pickingExpiry = Timer.scheduledTimer(withTimeInterval: Self.pickingTimeout, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.endPicking() }
+        }
+    }
+
+    /// Parks the share window again; a capture already started keeps streaming it.
+    private func endPicking() {
+        guard pickingExpiry != nil else { return }
+        pickingExpiry?.invalidate()
+        pickingExpiry = nil
+        // Normal level: Chromium's window picker lists only level-0 windows.
+        shareWindow?.level = .normal
+        if current == .meeting { parkShare() }
     }
 
     func apply(_ output: Output) {
@@ -171,7 +215,7 @@ final class OutputController {
     }
 
     private func screensChanged() {
-        if current == .meeting { parkShare() }
+        if current == .meeting && pickingExpiry == nil { parkShare() }
         guard case .projector(let id) = current else { return }
         if let screen = Self.screen(for: id), CGDisplayIsInMirrorSet(id) == 0 {
             projectorWindow?.setFrame(screen.frame, display: true)

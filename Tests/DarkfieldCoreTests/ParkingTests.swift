@@ -26,3 +26,18 @@ final class ParkingTests: XCTestCase {
         XCTAssertFalse(a.intersects(frame))
     }
 }
+
+final class PickingTests: XCTestCase {
+    func testCentredOnTheDisplaySoAClickCanReachIt() {
+        let tv = CGRect(x: 0, y: 0, width: 3840, height: 2160)
+        XCTAssertEqual(Parking.pickingFrame(size: CGSize(width: 1920, height: 1080), display: tv),
+                       CGRect(x: 960, y: 540, width: 1920, height: 1080))
+    }
+
+    func testCentredOnADisplayAwayFromTheOrigin() {
+        let laptop = CGRect(x: -2056, y: 0, width: 2056, height: 1329)
+        let r = Parking.pickingFrame(size: CGSize(width: 1920, height: 1080), display: laptop)
+        XCTAssertEqual(r.midX, laptop.midX)
+        XCTAssertEqual(r.midY, laptop.midY)
+    }
+}

@@ -20,4 +20,12 @@ public enum Parking {
         let all = displays.reduce(CGRect.null) { $0.union($1) }
         return CGRect(origin: CGPoint(x: all.maxX, y: all.maxY), size: size)
     }
+
+    /// Where the share window shows while a meeting app's window picker is open: centred on
+    /// `display`. Pickers that select by clicking a window on screen (WebKit's, macOS's) can't
+    /// reach the one parked point.
+    public static func pickingFrame(size: CGSize, display: CGRect) -> CGRect {
+        CGRect(x: display.midX - size.width / 2, y: display.midY - size.height / 2,
+               width: size.width, height: size.height)
+    }
 }
