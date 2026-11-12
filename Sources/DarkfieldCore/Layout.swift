@@ -14,6 +14,17 @@ public enum Layout {
         return sources.map { aspectFit($0.size, in: area) }
     }
 
+    /// Where `window` (CG global) goes so the canvas shows it at 1:1: the canvas area inside
+    /// `margin`, at the window's top-left, moved back inside `visible` (the screen's usable area,
+    /// CG global). On a screen smaller than that area it takes the whole of `visible` instead.
+    public static func unscaledFrame(for window: CGRect, margin: CGFloat, visible: CGRect, canvas: CGSize = canvas) -> CGRect {
+        let w = min(canvas.width - 2 * margin, visible.width)
+        let h = min(canvas.height - 2 * margin, visible.height)
+        let x = min(max(window.minX, visible.minX), visible.maxX - w)
+        let y = min(max(window.minY, visible.minY), visible.maxY - h)
+        return CGRect(x: x, y: y, width: w, height: h)
+    }
+
     /// `ids` (shared-set order) ordered back to front for the canvas. Windows in `frontToBack` (the
     /// on-screen stacking) follow it; windows not on screen, such as one on another Space, go to the
     /// back in shared-set order.

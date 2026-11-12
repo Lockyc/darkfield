@@ -43,4 +43,24 @@ final class LayoutTests: XCTestCase {
     func testStackKeepsSharedOrderForWindowsOffScreen() {
         XCTAssertEqual(Layout.backToFront([4, 5, 1], frontToBack: [1]), [4, 5, 1])
     }
+
+    private let bigScreen = CGRect(x: 0, y: 25, width: 2560, height: 1415)
+
+    func testUnscaledFrameIsTheAreaInsideTheMargin() {
+        let f = Layout.unscaledFrame(for: CGRect(x: 100, y: 200, width: 800, height: 600), margin: 40, visible: bigScreen)
+        XCTAssertEqual(f, CGRect(x: 100, y: 200, width: 1840, height: 1000))
+        // That size lands on the canvas at exactly 1:1.
+        XCTAssertEqual(Layout.frames(sources: [f], margin: 40)[0].size, f.size)
+    }
+
+    func testUnscaledFrameMovesBackOnScreen() {
+        let f = Layout.unscaledFrame(for: CGRect(x: 1500, y: 900, width: 800, height: 400), margin: 40, visible: bigScreen)
+        XCTAssertEqual(f, CGRect(x: 720, y: 440, width: 1840, height: 1000))
+    }
+
+    func testUnscaledFrameShrinksToASmallScreen() {
+        let laptop = CGRect(x: 0, y: 33, width: 1512, height: 949)
+        let f = Layout.unscaledFrame(for: CGRect(x: 300, y: 300, width: 800, height: 600), margin: 40, visible: laptop)
+        XCTAssertEqual(f, laptop)
+    }
 }

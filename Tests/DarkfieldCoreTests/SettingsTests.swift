@@ -7,6 +7,9 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(s.windowHotKey?.keyCode, 18)         // kVK_ANSI_1
         XCTAssertEqual(s.windowHotKey?.modifiers, 0x300)    // cmdKey | shiftKey
         XCTAssertEqual(s.windowHotKey?.display, "⇧⌘1")
+        XCTAssertEqual(s.fitHotKey?.keyCode, 19)            // kVK_ANSI_2
+        XCTAssertEqual(s.fitHotKey?.modifiers, 0x300)
+        XCTAssertEqual(s.fitHotKey?.display, "⇧⌘2")
         XCTAssertNil(s.pointerHotKey)
         XCTAssertEqual(s.idleFade, 10)
         XCTAssertEqual(s.margin, 40)
@@ -40,6 +43,7 @@ final class SettingsMigrationTests: XCTestCase {
         let s = try JSONDecoder().decode(Settings.self, from: Data(json.utf8))
         XCTAssertEqual(s.margin, 12)
         XCTAssertEqual(s.windowHotKey, .defaultWindowToggle)
+        XCTAssertEqual(s.fitHotKey, .defaultFitWindow)
         XCTAssertEqual(s.idleFade, 10)
     }
 
@@ -47,8 +51,10 @@ final class SettingsMigrationTests: XCTestCase {
         var s = Settings()
         s.idleFade = nil
         s.windowHotKey = nil
+        s.fitHotKey = nil
         let back = try JSONDecoder().decode(Settings.self, from: JSONEncoder().encode(s))
         XCTAssertNil(back.idleFade)
         XCTAssertNil(back.windowHotKey)
+        XCTAssertNil(back.fitHotKey)
     }
 }

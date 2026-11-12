@@ -16,7 +16,8 @@ public enum Output: Codable, Equatable, Sendable {
 
 public struct Settings: Codable, Equatable, Sendable {
     public var windowHotKey: HotKeySpec? = .defaultWindowToggle
-    /// Global hotkeys other than the window toggle ship unassigned.
+    public var fitHotKey: HotKeySpec? = .defaultFitWindow
+    /// Global hotkeys other than the window toggle and fit ship unassigned.
     public var pointerHotKey: HotKeySpec? = nil
     /// Seconds of stillness before the audience pointer fades; nil = never.
     public var idleFade: TimeInterval? = 10
@@ -29,7 +30,7 @@ public struct Settings: Codable, Equatable, Sendable {
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case windowHotKey, pointerHotKey, idleFade, margin, wallpaper, output, pointerEnabled, camera
+        case windowHotKey, fitHotKey, pointerHotKey, idleFade, margin, wallpaper, output, pointerEnabled, camera
     }
 
     /// Field by field: a key missing from older saved settings takes its default and the rest
@@ -45,6 +46,7 @@ public struct Settings: Codable, Equatable, Sendable {
             return try? c.decodeIfPresent(T.self, forKey: key)
         }
         windowHotKey = optional(.windowHotKey, windowHotKey)
+        fitHotKey = optional(.fitHotKey, fitHotKey)
         pointerHotKey = optional(.pointerHotKey, pointerHotKey)
         idleFade = optional(.idleFade, idleFade)
         margin = field(.margin, margin)
@@ -59,6 +61,7 @@ public struct Settings: Codable, Equatable, Sendable {
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(windowHotKey, forKey: .windowHotKey)
+        try c.encode(fitHotKey, forKey: .fitHotKey)
         try c.encode(pointerHotKey, forKey: .pointerHotKey)
         try c.encode(idleFade, forKey: .idleFade)
         try c.encode(margin, forKey: .margin)

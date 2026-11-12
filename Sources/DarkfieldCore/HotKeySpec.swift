@@ -15,4 +15,6 @@ public struct HotKeySpec: Codable, Equatable, Sendable {
 
     /// ⇧⌘1 (kVK_ANSI_1, 18), Screegle's window toggle, which darkfield replaces.
     public static let defaultWindowToggle = HotKeySpec(keyCode: 18, modifiers: 0x300, display: "⇧⌘1")
+    /// ⇧⌘2 (kVK_ANSI_2, 19): resize the window under the cursor so the canvas shows it unscaled.
+    public static let defaultFitWindow = HotKeySpec(keyCode: 19, modifiers: 0x300, display: "⇧⌘2")
 }
