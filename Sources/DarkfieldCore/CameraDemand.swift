@@ -1,6 +1,6 @@
 import Foundation
 
-public struct CameraInfo: Equatable, Sendable {
+public struct CameraInfo: Codable, Hashable, Sendable {
     public let id: String
     public let name: String
 
@@ -21,12 +21,16 @@ public enum CameraChoice {
 public enum CameraStatus: Equatable, Sendable {
     case off
     case live
+    /// The first choice isn't connected, so a later one is running.
+    case fallback(missing: String, using: String)
+    /// None of the chosen cameras is connected.
     case missing(name: String)
     case noCameraChosen
 }
 
-/// Whether the physical camera runs. It runs only while a call streams from Darkfield Camera or
-/// the panel's Preview is on, and only from the camera the presenter chose — never a fallback.
+/// Whether the physical camera runs, and which. It runs only while a call streams from Darkfield
+/// Camera or the panel's Preview is on, and only from the presenter's chosen cameras: the first of
+/// them that is connected, never one they didn't choose.
 public struct CameraDemand: Equatable, Sendable {
     public var clientStreaming = false
     public var preview = false
@@ -42,17 +46,16 @@ public struct CameraDemand: Equatable, Sendable {
 
     var wanted: Bool { clientStreaming || preview }
 
-    public func shouldRun(chosen: String?, connected: [CameraInfo]) -> Bool {
-        guard wanted, let chosen else { return false }
-        return connected.contains { $0.id == chosen }
+    /// The camera to run: the first of `preferred` that is connected, or nil to run none.
+    public func source(preferred: [CameraInfo], connected: [CameraInfo]) -> CameraInfo? {
+        guard wanted else { return nil }
+        return preferred.first { p in connected.contains { $0.id == p.id } }
     }
 
-    public func status(chosenID: String?, chosenName: String?, connected: [CameraInfo]) -> CameraStatus {
+    public func status(preferred: [CameraInfo], connected: [CameraInfo]) -> CameraStatus {
         guard wanted else { return .off }
-        guard let chosenID else { return .noCameraChosen }
-        guard connected.contains(where: { $0.id == chosenID }) else {
-            return .missing(name: chosenName ?? "The chosen camera")
-        }
-        return .live
+        guard let first = preferred.first else { return .noCameraChosen }
+        guard let using = source(preferred: preferred, connected: connected) else { return .missing(name: first.name) }
+        return using == first ? .live : .fallback(missing: first.name, using: using.name)
     }
 }

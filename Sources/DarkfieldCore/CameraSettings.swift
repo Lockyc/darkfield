@@ -2,10 +2,9 @@ import Foundation
 
 /// Darkfield Camera's source and effects.
 public struct CameraSettings: Codable, Equatable, Sendable {
-    /// The physical camera's unique id; nil until one is chosen.
-    public var deviceID: String? = nil
-    /// The chosen camera's name, kept so the panel can name it while it is disconnected.
-    public var deviceName: String? = nil
+    /// The physical cameras the presenter chose, most preferred first; Darkfield Camera uses the
+    /// first one connected. Names are kept so the panel can name a camera while it is unplugged.
+    public var preferred: [CameraInfo] = []
     public var blur = true
     /// 0…1, mapped to a radius by `BlurScale`.
     public var blurStrength: Double = 0.7
@@ -15,10 +14,9 @@ public struct CameraSettings: Codable, Equatable, Sendable {
     /// Flips the panel's preview like a mirror. A call always gets the unflipped picture.
     public var mirrorPreview = true
 
-    public init(deviceID: String? = nil, deviceName: String? = nil, blur: Bool = true,
+    public init(preferred: [CameraInfo] = [], blur: Bool = true,
                 blurStrength: Double = 0.7, framing: Bool = true, framingTightness: Double = 0.5) {
-        self.deviceID = deviceID
-        self.deviceName = deviceName
+        self.preferred = preferred
         self.blur = blur
         self.blurStrength = blurStrength
         self.framing = framing
@@ -26,8 +24,11 @@ public struct CameraSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case deviceID, deviceName, blur, blurStrength, framing, framingTightness, mirrorPreview
+        case preferred, blur, blurStrength, framing, framingTightness, mirrorPreview
     }
+
+    /// Settings saved with a single chosen camera, read so that camera becomes the first preference.
+    private enum SingleCameraKeys: String, CodingKey { case deviceID, deviceName }
 
     /// Field by field, like `Settings`: a missing or undecodable key takes its default.
     public init(from decoder: Decoder) throws {
@@ -36,8 +37,13 @@ public struct CameraSettings: Codable, Equatable, Sendable {
         func field<T: Decodable>(_ key: CodingKeys, _ fallback: T) -> T {
             (try? c.decodeIfPresent(T.self, forKey: key)) ?? fallback
         }
-        deviceID = (try? c.decodeIfPresent(String.self, forKey: .deviceID)) ?? nil
-        deviceName = (try? c.decodeIfPresent(String.self, forKey: .deviceName)) ?? nil
+        if c.contains(.preferred) {
+            preferred = field(.preferred, preferred)
+        } else if let single = try? decoder.container(keyedBy: SingleCameraKeys.self),
+                  let id = try? single.decodeIfPresent(String.self, forKey: .deviceID) {
+            let name = (try? single.decodeIfPresent(String.self, forKey: .deviceName)) ?? nil
+            preferred = [CameraInfo(id: id, name: name ?? "The chosen camera")]
+        }
         blur = field(.blur, blur)
         blurStrength = field(.blurStrength, blurStrength)
         framing = field(.framing, framing)

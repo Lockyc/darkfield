@@ -4,8 +4,7 @@ import XCTest
 final class CameraSettingsTests: XCTestCase {
     func testCameraDefaults() {
         let c = Settings().camera
-        XCTAssertNil(c.deviceID)
-        XCTAssertNil(c.deviceName)
+        XCTAssertEqual(c.preferred, [])
         XCTAssertTrue(c.blur)
         XCTAssertEqual(c.blurStrength, 0.7)
         XCTAssertTrue(c.framing)
@@ -27,19 +26,26 @@ final class CameraSettingsTests: XCTestCase {
     }
 
     func testPartialCameraKeepsTheRest() throws {
-        let json = #"{"camera": {"deviceID": "usb1", "blurStrength": 0.2}}"#
+        let json = #"{"camera": {"preferred": [{"id": "usb1", "name": "EMEET"}], "blurStrength": 0.2}}"#
         let c = try JSONDecoder().decode(Settings.self, from: Data(json.utf8)).camera
-        XCTAssertEqual(c.deviceID, "usb1")
+        XCTAssertEqual(c.preferred, [CameraInfo(id: "usb1", name: "EMEET")])
         XCTAssertEqual(c.blurStrength, 0.2)
         XCTAssertTrue(c.framing)
         XCTAssertEqual(c.framingTightness, 0.5)
     }
 
+    func testSingleSavedCameraBecomesTheFirstPreference() throws {
+        let json = #"{"deviceID": "usb1", "deviceName": "EMEET SmartCam S600"}"#
+        let c = try JSONDecoder().decode(CameraSettings.self, from: Data(json.utf8))
+        XCTAssertEqual(c.preferred, [CameraInfo(id: "usb1", name: "EMEET SmartCam S600")])
+    }
+
     func testCameraRoundTrip() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "darkfield-tests-\(UUID().uuidString)"))
         var s = Settings()
-        s.camera = CameraSettings(deviceID: "usb1", deviceName: "EMEET SmartCam S600", blur: false,
-                                  blurStrength: 0.1, framing: false, framingTightness: 0.9)
+        s.camera = CameraSettings(preferred: [CameraInfo(id: "usb1", name: "EMEET SmartCam S600"),
+                                              CameraInfo(id: "mac", name: "MacBook Pro Camera")],
+                                  blur: false, blurStrength: 0.1, framing: false, framingTightness: 0.9)
         s.save(to: defaults)
         XCTAssertEqual(Settings.load(from: defaults), s)
     }

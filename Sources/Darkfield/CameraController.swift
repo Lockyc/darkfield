@@ -14,7 +14,7 @@ final class CameraController: ObservableObject {
     var settings = CameraSettings() {
         didSet {
             pipeline.settings = settings
-            if settings.deviceID != oldValue.deviceID { reconcile() }
+            if settings.preferred != oldValue.preferred { reconcile() }
         }
     }
     /// Called on the capture queue with every processed frame.
@@ -44,18 +44,19 @@ final class CameraController: ObservableObject {
 
     func reconcile() {
         permission = AVCaptureDevice.authorizationStatus(for: .video)
-        status = demand.status(chosenID: settings.deviceID, chosenName: settings.deviceName, connected: cameras)
-        let run = demand.shouldRun(chosen: settings.deviceID, connected: cameras)
-        Self.log.info("reconcile run=\(run) client=\(self.demand.clientStreaming) preview=\(self.demand.preview) panelOpen=\(self.demand.panelOpen) cameras=\(self.cameras.count)")
+        status = demand.status(preferred: settings.preferred, connected: cameras)
+        let use = demand.source(preferred: settings.preferred, connected: cameras)
+        let run = use != nil
+        Self.log.info("reconcile run=\(run) camera=\(use?.name ?? "none") client=\(self.demand.clientStreaming) preview=\(self.demand.preview) panelOpen=\(self.demand.panelOpen) cameras=\(self.cameras.count)")
         if run, permission == .notDetermined {
             AVCaptureDevice.requestAccess(for: .video) { [weak self] _ in
                 Task { @MainActor [weak self] in self?.reconcile() }
             }
             return
         }
-        if run, permission == .authorized, let id = settings.deviceID {
+        if let use, permission == .authorized {
             running = true
-            source.start(id: id)
+            source.start(id: use.id)
         } else {
             running = false
             source.stop()

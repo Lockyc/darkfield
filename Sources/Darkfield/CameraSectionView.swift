@@ -18,8 +18,8 @@ struct CameraSectionView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             HStack {
                 Toggle("Preview", isOn: $camera.demand.preview)
-                    .disabled(model.settings.camera.deviceID == nil)
-                    .help(model.settings.camera.deviceID == nil ? "Choose a camera first" : "")
+                    .disabled(model.settings.camera.preferred.isEmpty)
+                    .help(model.settings.camera.preferred.isEmpty ? "Choose a camera first" : "")
                 Spacer()
                 Toggle("Mirror preview", isOn: settings.mirrorPreview)
                     .help("Flips only this preview. The call always sees you unflipped.")
@@ -29,18 +29,14 @@ struct CameraSectionView: View {
             HStack {
                 Text("Camera").font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Picker("", selection: source) {
-                    if camera.cameras.isEmpty && model.settings.camera.deviceID == nil {
-                        Text("No cameras connected").tag(String?.none)
-                    }
-                    ForEach(camera.cameras, id: \.id) { Text($0.name).tag(Optional($0.id)) }
-                    if let id = model.settings.camera.deviceID, !camera.cameras.contains(where: { $0.id == id }) {
-                        Text("\(model.settings.camera.deviceName ?? "Chosen camera") (not connected)").tag(Optional(id))
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: 220)
-                .disabled(camera.cameras.isEmpty && model.settings.camera.deviceID == nil)
+                choicePicker(slot: 0, none: camera.cameras.isEmpty ? "No cameras connected" : nil)
+                    .disabled(camera.cameras.isEmpty && preferred.isEmpty)
+            }
+            HStack {
+                Text("When it's unplugged").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                choicePicker(slot: 1, none: "Show a dark frame")
+                    .disabled(preferred.isEmpty)
             }
             HStack {
                 Toggle("Blur", isOn: settings.blur).frame(width: 80, alignment: .leading)
@@ -67,6 +63,9 @@ struct CameraSectionView: View {
             }
         } else {
             switch camera.status {
+            case .fallback(let missing, let using):
+                Text("\(missing) isn't connected — using \(using)")
+                    .font(.caption).foregroundStyle(.secondary)
             case .missing(let name):
                 Text("\(name) isn't connected — Darkfield Camera is showing a dark frame")
                     .font(.caption).foregroundStyle(.secondary)
@@ -101,12 +100,39 @@ struct CameraSectionView: View {
         }
     }
 
-    private var source: Binding<String?> {
+    private var preferred: [CameraInfo] { model.settings.camera.preferred }
+
+    /// A picker for one place in the preference order: the connected cameras, the camera already in
+    /// that place while it is unplugged, and `none` (choosing it clears the place) when given.
+    private func choicePicker(slot: Int, none: String?) -> some View {
+        let current = preferred.indices.contains(slot) ? preferred[slot] : nil
+        return Picker("", selection: choice(slot: slot)) {
+            if let none { Text(none).tag(String?.none) }
+            ForEach(camera.cameras, id: \.id) { Text($0.name).tag(Optional($0.id)) }
+            if let current, !camera.cameras.contains(where: { $0.id == current.id }) {
+                Text("\(current.name) (not connected)").tag(Optional(current.id))
+            }
+        }
+        .labelsHidden()
+        .frame(maxWidth: 220)
+    }
+
+    /// Choosing the camera already in the other place swaps the two rather than listing it twice.
+    private func choice(slot: Int) -> Binding<String?> {
         Binding(
-            get: { model.settings.camera.deviceID },
+            get: { preferred.indices.contains(slot) ? preferred[slot].id : nil },
             set: { id in
-                model.settings.camera.deviceID = id
-                model.settings.camera.deviceName = camera.cameras.first { $0.id == id }?.name ?? model.settings.camera.deviceName
+                var list = Array(preferred.prefix(2))
+                if let id {
+                    if let j = list.firstIndex(where: { $0.id == id }) {
+                        if slot < list.count { list.swapAt(j, slot) }
+                    } else if let cam = camera.cameras.first(where: { $0.id == id }) {
+                        if slot < list.count { list[slot] = cam } else { list.append(cam) }
+                    }
+                } else if slot < list.count {
+                    list.remove(at: slot)
+                }
+                model.settings.camera.preferred = list
             })
     }
 }

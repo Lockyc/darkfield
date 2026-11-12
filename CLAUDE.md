@@ -48,8 +48,9 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 - Darkfield Camera's extension never opens a camera. darkfield captures and processes; the
   extension relays darkfield's latest frame, or black once it is stale (`IdleFrame`).
 - The physical camera runs only while `CameraDemand` wants it: an app streaming from Darkfield
-  Camera, or Preview on with the panel open. A missing chosen camera means a dark frame, never
-  another camera.
+  Camera, or Preview on with the panel open. It is the first connected camera in
+  `CameraSettings.preferred`; with none of those connected the frame is dark, never a camera the
+  presenter didn't choose.
 - The only global hotkeys are the ones in `Settings`. The window toggle defaults to ⇧⌘1,
   Screegle's, and fit-unscaled to ⇧⌘2. Every other hotkey ships unassigned.
 - Fit-unscaled (`WindowFitter`) is the one thing darkfield does to another app's window, and

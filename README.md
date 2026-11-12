@@ -63,8 +63,8 @@ Extensions → Camera Extensions; the panel has a button that opens it.
   easing after you like Center Stage. Pick **Darkfield Camera** as the app's camera. **Blur** and
   **Framing** each switch on or off, with a strength and a Wide–Tight setting. The camera runs only
   while an app is using Darkfield Camera or the panel's **Preview** is on, and Preview turns off
-  when the panel closes. If the camera you chose isn't connected, the call sees a dark frame,
-  never another camera.
+  when the panel closes. Choose a **Camera** and, for when it's unplugged, a second one; with
+  neither connected the call sees a dark frame, never a camera you didn't choose.
 - **The panel** (the menu-bar icon) has two columns. The left holds the live canvas preview, the
   shared windows (✕ removes one), **Present to**, the margin and the pointer toggle; the right
   holds the camera: its preview (**Mirror preview** flips only your view of it), the camera

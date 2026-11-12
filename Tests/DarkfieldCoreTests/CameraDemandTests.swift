@@ -3,25 +3,32 @@ import XCTest
 
 final class CameraDemandTests: XCTestCase {
     private let usb = CameraInfo(id: "usb1", name: "EMEET SmartCam S600")
+    private let mac = CameraInfo(id: "mac", name: "MacBook Pro Camera")
+    private let phone = CameraInfo(id: "phone", name: "Lachlan's iPhone Camera")
+
+    private func streaming() -> CameraDemand {
+        var d = CameraDemand()
+        d.clientStreaming = true
+        return d
+    }
 
     func testIdleIsOff() {
         let d = CameraDemand()
-        XCTAssertFalse(d.shouldRun(chosen: "usb1", connected: [usb]))
-        XCTAssertEqual(d.status(chosenID: "usb1", chosenName: usb.name, connected: [usb]), .off)
+        XCTAssertNil(d.source(preferred: [usb], connected: [usb]))
+        XCTAssertEqual(d.status(preferred: [usb], connected: [usb]), .off)
     }
 
     func testClientStartsCamera() {
-        var d = CameraDemand()
-        d.clientStreaming = true
-        XCTAssertTrue(d.shouldRun(chosen: "usb1", connected: [usb]))
-        XCTAssertEqual(d.status(chosenID: "usb1", chosenName: usb.name, connected: [usb]), .live)
+        let d = streaming()
+        XCTAssertEqual(d.source(preferred: [usb], connected: [usb]), usb)
+        XCTAssertEqual(d.status(preferred: [usb], connected: [usb]), .live)
     }
 
     func testPreviewStartsCamera() {
         var d = CameraDemand()
         d.panelOpen = true
         d.preview = true
-        XCTAssertTrue(d.shouldRun(chosen: "usb1", connected: [usb]))
+        XCTAssertEqual(d.source(preferred: [usb], connected: [usb]), usb)
     }
 
     func testPanelCloseEndsPreview() {
@@ -30,37 +37,40 @@ final class CameraDemandTests: XCTestCase {
         d.preview = true
         d.panelClosed()
         XCTAssertFalse(d.preview)
-        XCTAssertFalse(d.shouldRun(chosen: "usb1", connected: [usb]))
-        XCTAssertEqual(d.status(chosenID: "usb1", chosenName: usb.name, connected: [usb]), .off)
+        XCTAssertNil(d.source(preferred: [usb], connected: [usb]))
+        XCTAssertEqual(d.status(preferred: [usb], connected: [usb]), .off)
     }
 
     func testPanelCloseKeepsACallRunning() {
-        var d = CameraDemand()
-        d.clientStreaming = true
+        var d = streaming()
         d.preview = true
         d.panelClosed()
-        XCTAssertTrue(d.shouldRun(chosen: "usb1", connected: [usb]))
+        XCTAssertEqual(d.source(preferred: [usb], connected: [usb]), usb)
     }
 
-    func testMissingCameraGoesDarkAndNamesIt() {
-        var d = CameraDemand()
-        d.clientStreaming = true
-        XCTAssertFalse(d.shouldRun(chosen: "usb1", connected: []))
-        XCTAssertEqual(d.status(chosenID: "usb1", chosenName: usb.name, connected: []), .missing(name: "EMEET SmartCam S600"))
-        XCTAssertTrue(d.shouldRun(chosen: "usb1", connected: [usb]))
+    func testFirstPreferenceWinsWhenConnected() {
+        let d = streaming()
+        XCTAssertEqual(d.source(preferred: [usb, mac], connected: [phone, mac, usb]), usb)
+        XCTAssertEqual(d.status(preferred: [usb, mac], connected: [phone, mac, usb]), .live)
     }
 
-    func testMissingWithoutSavedName() {
-        var d = CameraDemand()
-        d.clientStreaming = true
-        XCTAssertEqual(d.status(chosenID: "usb1", chosenName: nil, connected: []), .missing(name: "The chosen camera"))
+    func testFallsBackToTheNextPreferenceNeverAnUnlistedCamera() {
+        let d = streaming()
+        XCTAssertEqual(d.source(preferred: [usb, mac], connected: [phone, mac]), mac)
+        XCTAssertEqual(d.status(preferred: [usb, mac], connected: [phone, mac]),
+                       .fallback(missing: "EMEET SmartCam S600", using: "MacBook Pro Camera"))
+    }
+
+    func testNoPreferenceConnectedGoesDarkAndNamesTheFirst() {
+        let d = streaming()
+        XCTAssertNil(d.source(preferred: [usb, mac], connected: [phone]))
+        XCTAssertEqual(d.status(preferred: [usb, mac], connected: [phone]), .missing(name: "EMEET SmartCam S600"))
     }
 
     func testNoCameraChosen() {
-        var d = CameraDemand()
-        d.clientStreaming = true
-        XCTAssertFalse(d.shouldRun(chosen: nil, connected: [usb]))
-        XCTAssertEqual(d.status(chosenID: nil, chosenName: nil, connected: [usb]), .noCameraChosen)
+        let d = streaming()
+        XCTAssertNil(d.source(preferred: [], connected: [usb]))
+        XCTAssertEqual(d.status(preferred: [], connected: [usb]), .noCameraChosen)
     }
 }
 
