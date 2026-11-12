@@ -26,7 +26,7 @@ final class OutputController {
     /// Set while a window picker is open and the share window is shown for clicking; its
     /// expiry parks the window again if the picker's close is never announced.
     private var pickingExpiry: Timer?
-    private let pickingLabel = PickingLabel()
+    private let pickingOverlay = PickingOverlay()
     /// How long the share window stays shown for a picker whose close never arrives.
     private static let pickingTimeout: TimeInterval = 120
 
@@ -64,7 +64,10 @@ final class OutputController {
         let frame = ScreenSpace.toAppKit(cg, primaryHeight: primaryHeight)
         w.setFrame(frame, display: true)
         w.orderFrontRegardless()
-        pickingLabel.show(over: frame, on: main)
+        if let content = w.contentView {
+            pickingOverlay.frame = content.bounds
+            content.addSubview(pickingOverlay)
+        }
         pickingExpiry?.invalidate()
         pickingExpiry = Timer.scheduledTimer(withTimeInterval: Self.pickingTimeout, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated { self?.endPicking() }
@@ -76,7 +79,7 @@ final class OutputController {
         guard pickingExpiry != nil else { return }
         pickingExpiry?.invalidate()
         pickingExpiry = nil
-        pickingLabel.hide()
+        pickingOverlay.removeFromSuperview()
         shareWindow?.ignoresMouseEvents = true
         shareWindow?.collectionBehavior.insert(.stationary)
         if current == .meeting { parkShare() }

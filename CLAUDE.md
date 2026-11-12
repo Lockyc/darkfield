@@ -36,7 +36,10 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 - The canvas never shows anything the presenter didn't pick. Capture is one
   `SCContentFilter(desktopIndependentWindow:)` per shared window, with `showsCursor = false`.
   Never capture by display or by app.
-- The canvas never carries branding: no watermark, no app name.
+- The canvas never carries branding: no watermark, no app name. The one overlay is
+  `PickingOverlay`, on the share window only while a window picker is open; it is removed on
+  `pickerDidClose`, which a client posts when its capture request completes, before any frame is
+  sent.
 - Core geometry is in CG global coordinates (top-left origin, y down). AppKit points are
   converted at the edge.
 - The only global hotkeys are the ones in `Settings`. The window toggle defaults to ⇧⌘1,
