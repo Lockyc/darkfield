@@ -51,7 +51,9 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
   Camera, or Preview on with the panel open. A missing chosen camera means a dark frame, never
   another camera.
 - The only global hotkeys are the ones in `Settings`. The window toggle defaults to ⇧⌘1,
-  Screegle's. Every other hotkey ships unassigned.
+  Screegle's, and fit-unscaled to ⇧⌘2. Every other hotkey ships unassigned.
+- Fit-unscaled (`WindowFitter`) is the one thing darkfield does to another app's window, and
+  the one use of the Accessibility grant.
 
 ## Capture
 

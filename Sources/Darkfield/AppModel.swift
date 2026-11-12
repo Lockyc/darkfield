@@ -35,6 +35,7 @@ final class AppModel: ObservableObject {
     var recordingHotKey: Bool { listeningRecorders > 0 }
     @Published var windowHotKeyRefused = false
     @Published var pointerHotKeyRefused = false
+    @Published var fitHotKeyRefused = false
 
     /// nil outside a bundle that names a feed (`swift run`); the panel's update button is then disabled.
     var updater: SPUStandardUpdaterController?

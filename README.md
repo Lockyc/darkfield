@@ -38,6 +38,9 @@ Extensions → Camera Extensions; the panel has a button that opens it.
 
 - **Share a window** by pressing **⇧⌘1** over it, or with **Add Window…** in the panel; press
   ⇧⌘1 again to stop. A shared window keeps an amber ring around it while it's shared.
+- **Show a window unscaled** by pressing **⇧⌘2** over it: darkfield resizes it to the canvas
+  inside its margin, so the audience sees it pixel for pixel. The first press asks for
+  Accessibility access in System Settings → Privacy & Security → Accessibility.
 - **Shared windows stack** on the canvas, each scaled to fill it, in the same order as on your
   screen: the shared window you bring to the front is the one the audience sees.
 - **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It sits off screen at

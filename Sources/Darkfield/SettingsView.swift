@@ -14,6 +14,10 @@ struct SettingsView: View {
                     HotKeyRecorder(spec: $model.settings.windowHotKey, listeners: $model.listeningRecorders,
                                    refused: model.windowHotKeyRefused)
                 }
+                LabeledContent("Resize window to fit unscaled") {
+                    HotKeyRecorder(spec: $model.settings.fitHotKey, listeners: $model.listeningRecorders,
+                                   refused: model.fitHotKeyRefused)
+                }
                 LabeledContent("Audience pointer on/off") {
                     HotKeyRecorder(spec: $model.settings.pointerHotKey, listeners: $model.listeningRecorders,
                                    refused: model.pointerHotKeyRefused)

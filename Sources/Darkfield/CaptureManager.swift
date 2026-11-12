@@ -50,16 +50,21 @@ final class CaptureManager {
         stackTimer = t
     }
 
-    /// Toggles the window under `p` (CG global) in or out of the shared set: the topmost window
-    /// there, when it is an app's normal window. nil when there is none (the desktop, or a panel,
-    /// toolbar or darkfield's preview is on top).
+    /// Toggles the window under `p` (CG global) in or out of the shared set. nil when there is none.
     func toggleWindow(at p: CGPoint) async -> ToggleResult? {
+        guard let top = await window(at: p), let pid = top.owningApplication?.processID else { return nil }
+        return toggle(top.windowID, ownerPID: pid)
+    }
+
+    /// The topmost window under `p` (CG global), when it is an app's normal window. nil when there
+    /// is none (the desktop, or a panel, toolbar or darkfield's preview is on top).
+    func window(at p: CGPoint) async -> SCWindow? {
         guard let content = try? await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true) else { return nil }
         let order = Dictionary(uniqueKeysWithValues: visibleWindows().enumerated().map { ($1.id, $0) })
         let under = content.windows.filter { order[$0.windowID] != nil && $0.frame.contains(p) }
         guard let top = under.min(by: { order[$0.windowID]! < order[$1.windowID]! }),
-              top.windowLayer == 0, let pid = top.owningApplication?.processID else { return nil }
-        return toggle(top.windowID, ownerPID: pid)
+              top.windowLayer == 0, top.owningApplication != nil else { return nil }
+        return top
     }
 
     /// Windows that can be shared from the panel: on-screen, normal-layer, not darkfield's own.

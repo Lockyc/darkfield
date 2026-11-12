@@ -1,5 +1,6 @@
 import AppKit
 import CoreMedia
+import DarkfieldCore
 import IOSurface
 import ScreenCaptureKit
 
@@ -47,17 +48,20 @@ final class WindowCapture: NSObject, SCStreamOutput, SCStreamDelegate, @unchecke
     /// The backing scale of the screen a CG-global `frame` mostly overlaps.
     @MainActor
     static func backingScale(for frame: CGRect) -> CGFloat {
+        screen(for: frame)?.backingScaleFactor ?? 2
+    }
+
+    /// The screen a CG-global `frame` mostly overlaps.
+    @MainActor
+    static func screen(for frame: CGRect) -> NSScreen? {
         let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
-        let best = NSScreen.screens.max { a, b in
+        return NSScreen.screens.max { a, b in
             overlap(a, frame, primaryHeight) < overlap(b, frame, primaryHeight)
         }
-        return best?.backingScaleFactor ?? 2
     }
 
     private static func overlap(_ screen: NSScreen, _ cg: CGRect, _ primaryHeight: CGFloat) -> CGFloat {
-        let f = screen.frame
-        let screenCG = CGRect(x: f.minX, y: primaryHeight - f.maxY, width: f.width, height: f.height)
-        let i = screenCG.intersection(cg)
+        let i = ScreenSpace.toCG(screen.frame, primaryHeight: primaryHeight).intersection(cg)
         return i.isNull ? 0 : i.width * i.height
     }
 

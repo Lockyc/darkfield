@@ -6,6 +6,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     static let windowToggleID: UInt32 = 1
     static let pointerToggleID: UInt32 = 2
+    static let fitWindowID: UInt32 = 3
 
     let canvas = CanvasModel()
     lazy var captures = CaptureManager(model: canvas)
@@ -34,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if recording {
                 hotKeys.set(nil, id: Self.windowToggleID)
                 hotKeys.set(nil, id: Self.pointerToggleID)
+                hotKeys.set(nil, id: Self.fitWindowID)
             } else {
                 registerHotKeys()
             }
@@ -74,14 +76,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    /// Registers both hotkeys and records which ones macOS refused, so Settings and the panel can
+    /// Registers every hotkey and records which ones macOS refused, so Settings and the panel can
     /// say so instead of a shortcut silently doing nothing.
     private func registerHotKeys() {
-        var refused: Set<UInt32> = []
-        if !hotKeys.set(settings.windowHotKey, id: Self.windowToggleID) { refused.insert(Self.windowToggleID) }
-        if !hotKeys.set(settings.pointerHotKey, id: Self.pointerToggleID) { refused.insert(Self.pointerToggleID) }
-        model.windowHotKeyRefused = refused.contains(Self.windowToggleID)
-        model.pointerHotKeyRefused = refused.contains(Self.pointerToggleID)
+        model.windowHotKeyRefused = !hotKeys.set(settings.windowHotKey, id: Self.windowToggleID)
+        model.pointerHotKeyRefused = !hotKeys.set(settings.pointerHotKey, id: Self.pointerToggleID)
+        model.fitHotKeyRefused = !hotKeys.set(settings.fitHotKey, id: Self.fitWindowID)
     }
 
     private func apply(old: DarkfieldCore.Settings) {
@@ -92,7 +92,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.notice = nil
             outputs.apply(settings.output)
         }
-        if old.windowHotKey != settings.windowHotKey || old.pointerHotKey != settings.pointerHotKey, !model.recordingHotKey {
+        if old.windowHotKey != settings.windowHotKey || old.pointerHotKey != settings.pointerHotKey
+            || old.fitHotKey != settings.fitHotKey, !model.recordingHotKey {
             registerHotKeys()
         }
     }
@@ -115,6 +116,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case Self.windowToggleID:
             let p = ScreenSpace.toCG(NSEvent.mouseLocation, primaryHeight: NSScreen.screens.first?.frame.height ?? 0)
             Task { ToggleFeedback.play(await captures.toggleWindow(at: p)) }
+        case Self.fitWindowID:
+            let p = ScreenSpace.toCG(NSEvent.mouseLocation, primaryHeight: NSScreen.screens.first?.frame.height ?? 0)
+            Task {
+                guard let w = await captures.window(at: p), w.owningApplication?.processID != ProcessInfo.processInfo.processIdentifier,
+                      WindowFitter.fit(w, margin: settings.margin) else { return NSSound.beep() }
+            }
         case Self.pointerToggleID:
             model.settings.pointerEnabled.toggle()
         default:
