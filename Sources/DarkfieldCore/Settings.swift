@@ -24,11 +24,12 @@ public struct Settings: Codable, Equatable, Sendable {
     public var wallpaper: WallpaperSource = .primary
     public var output: Output = .meeting
     public var pointerEnabled = true
+    public var camera = CameraSettings()
 
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case windowHotKey, pointerHotKey, idleFade, margin, wallpaper, output, pointerEnabled
+        case windowHotKey, pointerHotKey, idleFade, margin, wallpaper, output, pointerEnabled, camera
     }
 
     /// Field by field: a key missing from older saved settings takes its default and the rest
@@ -50,6 +51,7 @@ public struct Settings: Codable, Equatable, Sendable {
         wallpaper = field(.wallpaper, wallpaper)
         output = field(.output, output)
         pointerEnabled = field(.pointerEnabled, pointerEnabled)
+        camera = field(.camera, camera)
     }
 
     /// Writes every key, nil as null, so a deliberately cleared value is not mistaken for a
@@ -63,6 +65,7 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(wallpaper, forKey: .wallpaper)
         try c.encode(output, forKey: .output)
         try c.encode(pointerEnabled, forKey: .pointerEnabled)
+        try c.encode(camera, forKey: .camera)
     }
 
     static let key = "settings"
