@@ -1,5 +1,4 @@
 import AppKit
-@preconcurrency import AVFoundation
 import CoreMediaIO
 import DarkfieldCore
 import os
@@ -48,40 +47,39 @@ final class CameraRelay: NSObject, ObservableObject {
 
     // MARK: CoreMediaIO
 
-    /// The extension's device appears a second or two after activation reports success (the
-    /// extension process starts only then), and again after an update replaces it. Neither the
-    /// activation callback nor CoreMediaIO's device-list listener reliably arrives after it, so
-    /// each trigger keeps looking for `searchWindow` until the device is there.
+    /// The device list's listener reports the device going away, so the sink closes with it.
     private func watchDevices() {
         var address = Self.address(kCMIOHardwarePropertyDevices)
         CMIOObjectAddPropertyListenerBlock(CMIOObjectID(kCMIOObjectSystemObject), &address, .main) { [weak self] _, _ in
-            MainActor.assumeIsolated { self?.search() }
+            MainActor.assumeIsolated { self?.connect() }
         }
-        for name in [AVCaptureDevice.wasConnectedNotification, AVCaptureDevice.wasDisconnectedNotification] {
-            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.search() }
-            }
-        }
-        search()
+        connect()
     }
 
-    private static let searchWindow: TimeInterval = 30
-    private var searchUntil = Date.distantPast
-    private var searchTimer: Timer?
-
-    /// Connects now if the device is there, else keeps trying every half second for the window.
-    private func search() {
-        searchUntil = Date().addingTimeInterval(Self.searchWindow)
-        connect()
-        guard device == nil, searchTimer == nil else { return }
-        searchTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
+    /// A process that is already running never sees a camera that a newly installed or replaced
+    /// extension publishes: not in CoreMediaIO's device list, its listener, or AVFoundation's
+    /// notifications. Only a new process does. So once activation succeeds, darkfield relaunches
+    /// if the device still isn't visible — at most once per extension version, so a device that
+    /// never appears can't cause a relaunch loop.
+    private func relaunchIfDeviceUnseen() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             MainActor.assumeIsolated {
-                guard let self else { return timer.invalidate() }
-                self.connect()
-                if self.device != nil || Date() > self.searchUntil {
-                    timer.invalidate()
-                    self.searchTimer = nil
+                guard let self, self.device == nil else { return }
+                let version = Bundle(url: Bundle.main.bundleURL
+                    .appendingPathComponent("Contents/Library/SystemExtensions/\(Self.extensionID).systemextension"))?
+                    .infoDictionary?["CFBundleVersion"] as? String ?? "?"
+                let key = "cameraRelaunchedForExtension"
+                guard UserDefaults.standard.string(forKey: key) != version else {
+                    CameraController.log.error("relay: device not visible after relaunching for \(version)")
+                    return
                 }
+                UserDefaults.standard.set(version, forKey: key)
+                CameraController.log.info("relay: relaunching to see extension \(version)")
+                let reopen = Process()
+                reopen.executableURL = URL(fileURLWithPath: "/bin/sh")
+                reopen.arguments = ["-c", "sleep 1; /usr/bin/open \"$0\"", Bundle.main.bundlePath]
+                try? reopen.run()
+                NSApp.terminate(nil)
             }
         }
     }
@@ -174,7 +172,8 @@ extension CameraRelay: OSSystemExtensionRequestDelegate {
     nonisolated func request(_ request: OSSystemExtensionRequest, didFinishWithResult result: OSSystemExtensionRequest.Result) {
         MainActor.assumeIsolated {
             state = .ready
-            search()
+            connect()
+            relaunchIfDeviceUnseen()
         }
     }
 
