@@ -21,8 +21,13 @@ public struct Framing {
     static let settle: CGFloat = 0.002
     static let minWidthFraction: CGFloat = 0.4
     static let outputAspect: CGFloat = 16.0 / 9.0
-    /// Where the subject sits, from the top of the crop.
-    static let subjectFromTop: CGFloat = 0.4
+    /// Where the face's centre sits, from the top of the crop. The face box stops at the
+    /// forehead, so mid-frame leaves room above the head, as Google Meet frames it.
+    static let subjectFromTop: CGFloat = 0.5
+    /// Crop width as a multiple of the face's width, at tightness 0 (wide) and 1 (tight). The
+    /// default 0.5 gives 6: the face a sixth of the frame, matching Meet.
+    static let wideMultiple: CGFloat = 8
+    static let tightMultiple: CGFloat = 4
 
     public init() {}
 
@@ -59,7 +64,7 @@ public struct Framing {
     private static func target(subject: CGRect?, tightness: Double, hPerW: CGFloat, maxW: CGFloat) -> (cx: CGFloat, cy: CGFloat, w: CGFloat) {
         guard let s = subject else { return (0.5, 0.5, maxW) }
         let t = CGFloat(min(max(tightness, 0), 1))
-        let w = min(max(s.width * (6 - 3 * t), minWidthFraction * maxW), maxW)
+        let w = min(max(s.width * (wideMultiple + (tightMultiple - wideMultiple) * t), minWidthFraction * maxW), maxW)
         let h = w * hPerW
         let cx = min(max(s.midX, w / 2), 1 - w / 2)
         let cy = min(max(s.midY + (0.5 - subjectFromTop) * h, h / 2), 1 - h / 2)

@@ -19,7 +19,14 @@ final class FramingTests: XCTestCase {
         var f = Framing()
         run(&f, centred, seconds: 4)
         XCTAssertEqual(f.crop.midX, 0.5, accuracy: 0.01)
-        XCTAssertEqual(f.crop.width, 0.45, accuracy: 0.02)
+        // At the default tightness the face is a sixth of the frame's width, like Google Meet's framing.
+        XCTAssertEqual(f.crop.width, 0.6, accuracy: 0.02)
+    }
+
+    func testFaceSitsMidFrameLeavingHeadroom() {
+        var f = Framing()
+        run(&f, centred, seconds: 4)
+        XCTAssertEqual((centred.midY - f.crop.minY) / f.crop.height, 0.5, accuracy: 0.02)
     }
 
     func testCropStaysInsideAtEdge() {
