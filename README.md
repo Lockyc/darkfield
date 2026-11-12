@@ -39,7 +39,10 @@ Dock icon. Opening it again from Spotlight or Finder brings back the preview.
 - **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It sits off screen at
   the canvas's full 1920×1080. You watch a small preview that floats above your windows on every
   Space and never appears in a share; its close button hides it, and sharing a window or
-  **Show Preview Window** brings it back.
+  **Show Preview Window** brings it back. A picker that selects a window by clicking it (Meet in
+  [cooee](https://github.com/lockyc/cooee)) has ▶ Darkfield shown centred on your main display
+  while it is open; another app can do the same by posting the distributed notifications
+  `com.lockyc.darkfield.pickerWillOpen` and `com.lockyc.darkfield.pickerDidClose`.
 - **On a projector**, set your displays to extended (not mirrored), then choose **Present to →
   Projector** in the panel. The canvas fills the projector, and your mouse stays on your own
   screen.
