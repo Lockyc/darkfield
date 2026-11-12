@@ -17,7 +17,7 @@ gate:
 
 app := "build/darkfield.app"
 info_plist := "Support/Info.plist"
-# Developer ID provisioning profiles for Darkfield Camera: darkfield.provisionprofile (the app) and camera.provisionprofile (its extension)
+# Where darkfield.provisionprofile lives: the app's Developer ID profile, which lets it install Darkfield Camera
 profiles := env_var("HOME") / ".config/darkfield"
 
 # Render Support/AppIcon.icns and the README's icon.png from the Support/icon.svg master
@@ -54,14 +54,13 @@ bundle:
     "${sign[@]}" "$sparkle/Versions/B/XPCServices/Installer.xpc"
     "${sign[@]}" --preserve-metadata=entitlements "$sparkle/Versions/B/XPCServices/Downloader.xpc"
     "${sign[@]}" "$sparkle/Versions/B/Autoupdate" "$sparkle/Versions/B/Updater.app" "$sparkle"
-    # Darkfield Camera's extension needs restricted entitlements, which a Developer ID build may
-    # carry only with a provisioning profile; signing them without one stops the app launching.
-    # The profiles stay on this machine (the repo is public). Without them the app ships without
-    # the extension and its panel says so.
+    # Installing Darkfield Camera's extension takes a restricted entitlement, which a Developer ID
+    # app may carry only with a provisioning profile; signing it without one stops the app
+    # launching. The extension itself needs no profile. The profile stays on this machine (the
+    # repo is public). Without it the app ships without the extension and its panel says so.
     app_profile={{profiles}}/darkfield.provisionprofile
-    ext_profile={{profiles}}/camera.provisionprofile
     entitlements=Support/Darkfield.entitlements
-    if [ -n "$identity" ] && [ -f "$app_profile" ] && [ -f "$ext_profile" ]; then
+    if [ -n "$identity" ] && [ -f "$app_profile" ]; then
         swift build -c release --product DarkfieldCameraExtension
         ext={{app}}/Contents/Library/SystemExtensions/com.lockyc.darkfield.camera.systemextension
         mkdir -p "$ext/Contents/MacOS"
@@ -69,12 +68,11 @@ bundle:
         cp Support/CameraExtension-Info.plist "$ext/Contents/Info.plist"
         plutil -replace CFBundleShortVersionString -string "$(cat VERSION)" "$ext/Contents/Info.plist"
         plutil -replace CFBundleVersion -string "$(cat VERSION)" "$ext/Contents/Info.plist"
-        cp "$ext_profile" "$ext/Contents/embedded.provisionprofile"
         "${sign[@]}" --entitlements Support/CameraExtension.entitlements "$ext"
         cp "$app_profile" {{app}}/Contents/embedded.provisionprofile
         entitlements=Support/Darkfield-Extension.entitlements
     else
-        echo "bundle: Darkfield Camera's extension left out (needs a Developer ID identity and both profiles in {{profiles}})"
+        echo "bundle: Darkfield Camera's extension left out (needs a Developer ID identity and {{profiles}}/darkfield.provisionprofile)"
     fi
     # The hardened runtime refuses the camera, with no prompt, to an app without the camera entitlement.
     "${sign[@]}" --entitlements "$entitlements" {{app}}
@@ -95,6 +93,24 @@ install: quit bundle
     @# the commit this build came from: lets a later release (lockstep.sh) tell whether it is newer before replacing it
     xattr -w com.lockyc.build-commit "$(git rev-parse HEAD)$(git status --porcelain | grep -q . && echo -dirty)" /Applications/darkfield.app
     @just launch /Applications/darkfield.app
+
+# Install a notarized build, so Darkfield Camera activates (run `apple-notary` first; ~2 min)
+install-notarized: quit bundle
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # macOS validates a system extension against notarization (unless SIP is off), so an
+    # un-notarized local build installs the app but its camera extension is rejected.
+    : "${APPLE_ID:?run apple-notary first}" "${APPLE_PASSWORD:?run apple-notary first}" "${APPLE_TEAM_ID:?run apple-notary first}"
+    zip=build/darkfield-notarize.zip
+    rm -f "$zip"
+    ditto -c -k --keepParent {{app}} "$zip"
+    xcrun notarytool submit "$zip" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+    rm -f "$zip"
+    xcrun stapler staple {{app}}
+    rm -rf /Applications/darkfield.app
+    cp -R {{app}} /Applications/darkfield.app
+    xattr -w com.lockyc.build-commit "$(git rev-parse HEAD)$(git status --porcelain | grep -q . && echo -dirty)" /Applications/darkfield.app
+    just launch /Applications/darkfield.app
 
 # Quits any running Darkfield, force-killing one still alive after 3s. Runs before `bundle`: a
 # Darkfield whose bundle is rewritten under it fails its screen-recording check and prompts.

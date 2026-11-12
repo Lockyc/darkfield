@@ -8,9 +8,5 @@
 	<array>
 		<string>G9V8U6ZU5E.com.lockyc.darkfield</string>
 	</array>
-	<key>com.apple.application-identifier</key>
-	<string>G9V8U6ZU5E.com.lockyc.darkfield.camera</string>
-	<key>com.apple.developer.team-identifier</key>
-	<string>G9V8U6ZU5E</string>
 </dict>
 </plist>

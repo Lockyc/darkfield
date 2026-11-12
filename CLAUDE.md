@@ -76,12 +76,22 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
   granted to the built bundle. The panel is a transient popover that `winshot` doesn't list and
   that closes on focus loss (turning Preview off), so a camera check needs the presenter's own
   screenshot; the camera's on/off decisions are logged under subsystem `com.lockyc.darkfield`.
-- `just bundle` embeds the camera extension only when a Developer ID identity and both
-  provisioning profiles (`darkfield.provisionprofile`, `camera.provisionprofile` in
-  `~/.config/darkfield`) are present; the restricted entitlements can't be signed without them.
-  The app is signed with `Support/Darkfield.entitlements` (camera only) or, with the extension,
+- `just bundle` embeds the camera extension only when a Developer ID identity and the app's
+  Developer ID provisioning profile (`~/.config/darkfield/darkfield.provisionprofile`) are
+  present: `com.apple.developer.system-extension.install` can't be signed without it. The
+  extension needs no profile (sandbox plus a team-prefixed app group). The app is signed with
+  `Support/Darkfield.entitlements` (camera only) or, with the extension,
   `Support/Darkfield-Extension.entitlements`. A system extension activates only from
-  `/Applications`, so test it with `just install`.
+  `/Applications` and only notarized, so test it with `apple-notary` then
+  `just install-notarized`; after `just install` the camera extension is rejected.
+- **Minting the profile needs no portal clicks:** Xcode's stored account does it. Make a throwaway
+  XcodeGen project with an app `com.lockyc.darkfield` (entitlements:
+  `Darkfield-Extension.entitlements` minus the two identifier keys) embedding a system-extension
+  target, `xcodebuild archive … CODE_SIGNING_ALLOWED=NO`, ad-hoc sign the archived extension then
+  app with their entitlements, then `xcodebuild -exportArchive -allowProvisioningUpdates` with
+  `method developer-id`, `signingStyle automatic`. The export's `embedded.provisionprofile` is
+  the profile. A plain archive fails: development signing needs a registered device and the team
+  has none.
 - Branches: `main` + `dev`. Work lands on `dev`. A release fast-forwards `main` from `dev`
   (`git merge --ff-only dev`). Docs-only changes may land on `main` and are forward-merged into
   `dev` immediately.

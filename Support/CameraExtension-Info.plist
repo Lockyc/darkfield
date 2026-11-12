@@ -20,6 +20,8 @@
 	<string>6.0</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
+	<key>NSSystemExtensionUsageDescription</key>
+	<string>Darkfield Camera shows you, with your background blurred and the shot framed, to any video app.</string>
 	<key>CMIOExtension</key>
 	<dict>
 		<key>CMIOExtensionMachServiceName</key>
