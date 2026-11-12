@@ -6,4 +6,5 @@ tags    = ["macos", "presenting", "screen-sharing", "projector", "menu-bar"]
 stack   = ["swift"]
 
 [github]
+description  = "Present only the windows you choose, on a clean canvas over your wallpaper, to a video call or a projector — macOS menu-bar app"
 topics_extra = ["appkit", "swift", "screencapturekit", "zoom", "google-meet"]
