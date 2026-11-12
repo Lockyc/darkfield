@@ -32,7 +32,9 @@ Dock icon. Opening it again from Spotlight or Finder brings back the preview.
 
 The first time you turn on the camera **Preview**, allow darkfield to use the camera. Darkfield
 Camera is a system extension: allow it once in System Settings → General → Login Items &
-Extensions → Camera Extensions; the panel has a button that opens it.
+Extensions → Camera Extensions; the panel has a button that opens it. A video app that was
+already open when you allowed it, or when darkfield updated, lists Darkfield Camera only after
+you quit and reopen it.
 
 ## Features
 
