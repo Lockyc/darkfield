@@ -71,7 +71,7 @@ you quit and reopen it.
   shared windows (✕ removes one), **Present to**, the margin and the pointer toggle; the right
   holds the camera: its preview (**Mirror preview** flips only your view of it), the camera
   choice, Blur and Framing.
-- **Settings** — the share and pointer shortcuts, the halo's fade time, and the wallpaper behind
+- **Settings** — the share, fit and pointer shortcuts, the halo's fade time, and the wallpaper behind
   the canvas: the primary display's, another display's, or an image you choose.
 
 ## Status
