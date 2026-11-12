@@ -12,6 +12,18 @@ struct CameraSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
+            CameraPreview(layer: camera.previewLayer, mirrored: model.settings.camera.mirrorPreview)
+                .frame(width: 320, height: 180)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            HStack {
+                Toggle("Preview", isOn: $camera.demand.preview)
+                    .disabled(model.settings.camera.deviceID == nil)
+                    .help(model.settings.camera.deviceID == nil ? "Choose a camera first" : "")
+                Spacer()
+                Toggle("Mirror preview", isOn: settings.mirrorPreview)
+                    .help("Flips only this preview. The call always sees you unflipped.")
+            }
+            statusLine
             HStack {
                 Text("Camera").font(.caption).foregroundStyle(.secondary)
                 Spacer()
@@ -40,18 +52,6 @@ struct CameraSectionView: View {
                     .disabled(!model.settings.camera.framing)
                 Text("Tight").font(.caption).foregroundStyle(.secondary)
             }
-            HStack {
-                Toggle("Preview", isOn: $camera.demand.preview)
-                    .disabled(model.settings.camera.deviceID == nil)
-                    .help(model.settings.camera.deviceID == nil ? "Choose a camera first" : "")
-                Spacer()
-                Toggle("Mirror preview", isOn: settings.mirrorPreview)
-                    .help("Flips only this preview. The call always sees you unflipped.")
-            }
-            CameraPreview(layer: camera.previewLayer, mirrored: model.settings.camera.mirrorPreview)
-                .frame(width: 320, height: 180)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            statusLine
         }
     }
 

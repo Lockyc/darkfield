@@ -21,6 +21,28 @@ struct PanelView: View {
                 Text(notice).font(.callout).foregroundStyle(.secondary)
             }
 
+            HStack(alignment: .top, spacing: 14) {
+                presenting.frame(width: 320)
+                Divider()
+                CameraSectionView(model: model, camera: model.camera).frame(width: 320)
+            }
+
+            HStack {
+                Button("Settings…", action: openSettings)
+                Button("Check for Updates…") { model.updater?.checkForUpdates(nil) }
+                    .disabled(model.updater == nil)
+                    .help(model.updater == nil ? "Updates work in the installed app" : "")
+                Spacer()
+                Button("Quit darkfield") { NSApp.terminate(nil) }
+            }
+        }
+        .padding(14)
+        .frame(width: 683)
+    }
+
+    /// The left column: the canvas and everything that decides what goes on it and where it goes.
+    private var presenting: some View {
+        VStack(alignment: .leading, spacing: 12) {
             CanvasPreview(canvas: model.canvas)
                 .frame(width: 320, height: 180)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -34,8 +56,6 @@ struct PanelView: View {
             }
 
             windowList
-
-            CameraSectionView(model: model, camera: model.camera)
 
             LabeledContent("Present to") {
                 HStack {
@@ -60,18 +80,7 @@ struct PanelView: View {
                 Slider(value: $model.settings.margin, in: 0...120, step: 4)
             }
             Toggle("Audience pointer", isOn: $model.settings.pointerEnabled)
-
-            HStack {
-                Button("Settings…", action: openSettings)
-                Button("Check for Updates…") { model.updater?.checkForUpdates(nil) }
-                    .disabled(model.updater == nil)
-                    .help(model.updater == nil ? "Updates work in the installed app" : "")
-                Spacer()
-                Button("Quit darkfield") { NSApp.terminate(nil) }
-            }
         }
-        .padding(14)
-        .frame(width: 348)
     }
 
     private var windowList: some View {
