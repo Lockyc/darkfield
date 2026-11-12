@@ -48,15 +48,17 @@ final class OutputController {
         }
     }
 
-    /// Shows the share window centred on the main display, above other windows, so a picker that
-    /// selects by clicking can reach it. Meeting output only.
+    /// Shows the share window centred on the main display, in front of other windows, so a picker
+    /// that selects by clicking can reach it. Meeting output only. It stays at normal level and
+    /// takes the mouse while shown: macOS's picker offers neither a raised window nor one that
+    /// clicks pass through.
     private func showForPicking() {
         guard current == .meeting, let w = shareWindow, let main = NSScreen.screens.first else { return }
         let primaryHeight = main.frame.height
         let display = CGRect(x: main.frame.minX, y: primaryHeight - main.frame.maxY,
                              width: main.frame.width, height: main.frame.height)
         let cg = Parking.pickingFrame(size: Layout.canvas, display: display)
-        w.level = .floating
+        w.ignoresMouseEvents = false
         w.setFrame(ScreenSpace.toAppKit(cg, primaryHeight: primaryHeight), display: true)
         w.orderFrontRegardless()
         pickingExpiry?.invalidate()
@@ -70,8 +72,7 @@ final class OutputController {
         guard pickingExpiry != nil else { return }
         pickingExpiry?.invalidate()
         pickingExpiry = nil
-        // Normal level: Chromium's window picker lists only level-0 windows.
-        shareWindow?.level = .normal
+        shareWindow?.ignoresMouseEvents = true
         if current == .meeting { parkShare() }
     }
 
