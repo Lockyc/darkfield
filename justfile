@@ -17,6 +17,8 @@ gate:
 
 app := "build/darkfield.app"
 info_plist := "Support/Info.plist"
+# Developer ID provisioning profiles for Darkfield Camera: darkfield.provisionprofile (the app) and camera.provisionprofile (its extension)
+profiles := env_var("HOME") / ".config/darkfield"
 
 # Render Support/AppIcon.icns and the README's icon.png from the Support/icon.svg master
 icons:
@@ -52,8 +54,30 @@ bundle:
     "${sign[@]}" "$sparkle/Versions/B/XPCServices/Installer.xpc"
     "${sign[@]}" --preserve-metadata=entitlements "$sparkle/Versions/B/XPCServices/Downloader.xpc"
     "${sign[@]}" "$sparkle/Versions/B/Autoupdate" "$sparkle/Versions/B/Updater.app" "$sparkle"
-    # The hardened runtime refuses the camera, with no prompt, to an app without this entitlement.
-    "${sign[@]}" --entitlements Support/Darkfield.entitlements {{app}}
+    # Darkfield Camera's extension needs restricted entitlements, which a Developer ID build may
+    # carry only with a provisioning profile; signing them without one stops the app launching.
+    # The profiles stay on this machine (the repo is public). Without them the app ships without
+    # the extension and its panel says so.
+    app_profile={{profiles}}/darkfield.provisionprofile
+    ext_profile={{profiles}}/camera.provisionprofile
+    entitlements=Support/Darkfield.entitlements
+    if [ -n "$identity" ] && [ -f "$app_profile" ] && [ -f "$ext_profile" ]; then
+        swift build -c release --product DarkfieldCameraExtension
+        ext={{app}}/Contents/Library/SystemExtensions/com.lockyc.darkfield.camera.systemextension
+        mkdir -p "$ext/Contents/MacOS"
+        cp "$bin/DarkfieldCameraExtension" "$ext/Contents/MacOS/DarkfieldCameraExtension"
+        cp Support/CameraExtension-Info.plist "$ext/Contents/Info.plist"
+        plutil -replace CFBundleShortVersionString -string "$(cat VERSION)" "$ext/Contents/Info.plist"
+        plutil -replace CFBundleVersion -string "$(cat VERSION)" "$ext/Contents/Info.plist"
+        cp "$ext_profile" "$ext/Contents/embedded.provisionprofile"
+        "${sign[@]}" --entitlements Support/CameraExtension.entitlements "$ext"
+        cp "$app_profile" {{app}}/Contents/embedded.provisionprofile
+        entitlements=Support/Darkfield-Extension.entitlements
+    else
+        echo "bundle: Darkfield Camera's extension left out (needs a Developer ID identity and both profiles in {{profiles}})"
+    fi
+    # The hardened runtime refuses the camera, with no prompt, to an app without the camera entitlement.
+    "${sign[@]}" --entitlements "$entitlements" {{app}}
 
 # Print the directory holding Sparkle's sign_update and generate_keys (resolving packages first)
 sparkle-bin:
