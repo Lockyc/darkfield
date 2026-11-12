@@ -49,9 +49,9 @@ final class OutputController {
     }
 
     /// Shows the share window centred on the main display, in front of other windows, so a picker
-    /// that selects by clicking can reach it. Meeting output only. It stays at normal level and
-    /// takes the mouse while shown: macOS's picker offers neither a raised window nor one that
-    /// clicks pass through.
+    /// that selects by clicking can reach it. Meeting output only. While shown it stays at normal
+    /// level, takes the mouse and drops `.stationary`: macOS's picker offers no window that is
+    /// raised, that clicks pass through, or that is stationary.
     private func showForPicking() {
         guard current == .meeting, let w = shareWindow, let main = NSScreen.screens.first else { return }
         let primaryHeight = main.frame.height
@@ -59,6 +59,7 @@ final class OutputController {
                              width: main.frame.width, height: main.frame.height)
         let cg = Parking.pickingFrame(size: Layout.canvas, display: display)
         w.ignoresMouseEvents = false
+        w.collectionBehavior.remove(.stationary)
         w.setFrame(ScreenSpace.toAppKit(cg, primaryHeight: primaryHeight), display: true)
         w.orderFrontRegardless()
         pickingExpiry?.invalidate()
