@@ -5,6 +5,9 @@ public struct CameraSettings: Codable, Equatable, Sendable {
     /// The physical cameras the presenter chose, most preferred first; Darkfield Camera uses the
     /// first one connected. Names are kept so the panel can name a camera while it is unplugged.
     public var preferred: [CameraInfo] = []
+    /// Every camera darkfield has seen connected, in the order first seen, so one that is unplugged
+    /// right now can still be chosen.
+    public private(set) var known: [CameraInfo] = []
     public var blur = true
     /// 0…1, mapped to a radius by `BlurScale`.
     public var blurStrength: Double = 0.7
@@ -23,8 +26,22 @@ public struct CameraSettings: Codable, Equatable, Sendable {
         self.framingTightness = framingTightness
     }
 
+    /// Adds the `connected` cameras not yet known. true when any was new.
+    @discardableResult
+    public mutating func remember(_ connected: [CameraInfo]) -> Bool {
+        let new = connected.filter { c in !known.contains { $0.id == c.id } }
+        known += new
+        return !new.isEmpty
+    }
+
+    /// The cameras the presenter can choose from, connected or not: every known camera, plus any
+    /// preferred one not yet known.
+    public var choices: [CameraInfo] {
+        known + preferred.filter { p in !known.contains { $0.id == p.id } }
+    }
+
     private enum CodingKeys: String, CodingKey {
-        case preferred, blur, blurStrength, framing, framingTightness, mirrorPreview
+        case known, preferred, blur, blurStrength, framing, framingTightness, mirrorPreview
     }
 
     /// Settings saved with a single chosen camera, read so that camera becomes the first preference.
@@ -37,6 +54,7 @@ public struct CameraSettings: Codable, Equatable, Sendable {
         func field<T: Decodable>(_ key: CodingKeys, _ fallback: T) -> T {
             (try? c.decodeIfPresent(T.self, forKey: key)) ?? fallback
         }
+        known = field(.known, known)
         if c.contains(.preferred) {
             preferred = field(.preferred, preferred)
         } else if let single = try? decoder.container(keyedBy: SingleCameraKeys.self),

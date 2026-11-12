@@ -17,6 +17,8 @@ final class CameraController: ObservableObject {
             if settings.preferred != oldValue.preferred { reconcile() }
         }
     }
+    /// Called with the connected cameras when set and whenever they change, so they are remembered.
+    var onCamerasSeen: (([CameraInfo]) -> Void)? { didSet { onCamerasSeen?(cameras) } }
     /// Called on the capture queue with every processed frame.
     var onProcessedFrame: ((CMSampleBuffer) -> Void)? { didSet { pipeline.onFrame = onProcessedFrame } }
     let previewLayer = AVSampleBufferDisplayLayer()
@@ -37,6 +39,7 @@ final class CameraController: ObservableObject {
         source.onCamerasChanged = { [weak self] in
             guard let self else { return }
             cameras = source.cameras
+            onCamerasSeen?(cameras)
             reconcile()
         }
         cameras = source.cameras

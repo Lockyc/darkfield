@@ -29,8 +29,8 @@ struct CameraSectionView: View {
             HStack {
                 Text("Camera").font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                choicePicker(slot: 0, none: camera.cameras.isEmpty ? "No cameras connected" : nil)
-                    .disabled(camera.cameras.isEmpty && preferred.isEmpty)
+                choicePicker(slot: 0, none: choices.isEmpty ? "No cameras connected" : nil)
+                    .disabled(choices.isEmpty)
             }
             HStack {
                 Text("When it's unplugged").font(.caption).foregroundStyle(.secondary)
@@ -102,15 +102,16 @@ struct CameraSectionView: View {
 
     private var preferred: [CameraInfo] { model.settings.camera.preferred }
 
-    /// A picker for one place in the preference order: the connected cameras, the camera already in
-    /// that place while it is unplugged, and `none` (choosing it clears the place) when given.
+    private var choices: [CameraInfo] { model.settings.camera.choices }
+
+    /// A picker for one place in the preference order: every camera darkfield has seen, unplugged
+    /// ones marked, and `none` (choosing it clears the place) when given.
     private func choicePicker(slot: Int, none: String?) -> some View {
-        let current = preferred.indices.contains(slot) ? preferred[slot] : nil
-        return Picker("", selection: choice(slot: slot)) {
+        Picker("", selection: choice(slot: slot)) {
             if let none { Text(none).tag(String?.none) }
-            ForEach(camera.cameras, id: \.id) { Text($0.name).tag(Optional($0.id)) }
-            if let current, !camera.cameras.contains(where: { $0.id == current.id }) {
-                Text("\(current.name) (not connected)").tag(Optional(current.id))
+            ForEach(choices, id: \.id) { c in
+                let connected = camera.cameras.contains { $0.id == c.id }
+                Text(connected ? c.name : "\(c.name) (not connected)").tag(Optional(c.id))
             }
         }
         .labelsHidden()
@@ -126,7 +127,7 @@ struct CameraSectionView: View {
                 if let id {
                     if let j = list.firstIndex(where: { $0.id == id }) {
                         if slot < list.count { list.swapAt(j, slot) }
-                    } else if let cam = camera.cameras.first(where: { $0.id == id }) {
+                    } else if let cam = choices.first(where: { $0.id == id }) {
                         if slot < list.count { list[slot] = cam } else { list.append(cam) }
                     }
                 } else if slot < list.count {

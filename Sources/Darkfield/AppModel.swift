@@ -51,6 +51,7 @@ final class AppModel: ObservableObject {
         self.captures = captures
         self.canvas = canvas
         camera.settings = settings.camera
+        camera.onCamerasSeen = { [weak self] connected in self?.settings.camera.remember(connected) }
         refreshDisplays()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshDisplays() }
