@@ -3,13 +3,16 @@ import SwiftUI
 
 /// The menu-bar item: a click opens the control panel beneath it.
 @MainActor
-final class StatusItem: NSObject {
+final class StatusItem: NSObject, NSPopoverDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let popover = NSPopover()
+    /// True when the panel opens, false when it closes however it closes.
+    var onPanel: ((Bool) -> Void)?
 
     init(model: AppModel, openSettings: @escaping () -> Void) {
         super.init()
         popover.behavior = .transient
+        popover.delegate = self
         let panel = NSHostingController(rootView: PanelView(model: model, openSettings: { [weak self] in
             self?.popover.performClose(nil)
             openSettings()
@@ -41,6 +44,9 @@ final class StatusItem: NSObject {
         image.accessibilityDescription = "darkfield"
         return image
     }
+
+    func popoverWillShow(_ notification: Notification) { onPanel?(true) }
+    func popoverDidClose(_ notification: Notification) { onPanel?(false) }
 
     @objc private func toggle() {
         guard let button = item.button else { return }

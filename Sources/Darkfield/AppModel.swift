@@ -42,11 +42,13 @@ final class AppModel: ObservableObject {
     var onRecording: ((Bool) -> Void)?
     let captures: CaptureManager
     let canvas: CanvasModel
+    let camera = CameraController()
 
     init(settings: Settings, captures: CaptureManager, canvas: CanvasModel) {
         self.settings = settings
         self.captures = captures
         self.canvas = canvas
+        camera.settings = settings.camera
         refreshDisplays()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshDisplays() }

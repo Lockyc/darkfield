@@ -35,6 +35,8 @@ struct PanelView: View {
 
             windowList
 
+            CameraSectionView(model: model, camera: model.camera)
+
             LabeledContent("Present to") {
                 HStack {
                     Picker("", selection: outputKind) {

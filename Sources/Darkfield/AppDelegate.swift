@@ -50,6 +50,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startPointer()
         model.updater = Updater.make()
         statusItem = StatusItem(model: model, openSettings: { [weak self] in self?.showSettings() })
+        statusItem?.onPanel = { [weak self] open in
+            guard let camera = self?.model.camera else { return }
+            if open { camera.demand.panelOpen = true } else { camera.demand.panelClosed() }
+        }
         outputs.onFallback = { [weak self] message in
             guard let self else { return }
             model.settings.output = .meeting
@@ -79,6 +83,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func apply(old: DarkfieldCore.Settings) {
         settings.save(to: .standard)
         captures.settings = settings
+        model.camera.settings = settings.camera
         if old.output != settings.output, outputs.current != settings.output {
             model.notice = nil
             outputs.apply(settings.output)
