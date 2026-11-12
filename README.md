@@ -87,7 +87,7 @@ Needs Xcode's Swift 6 toolchain and [`just`](https://github.com/casey/just).
 git clone https://github.com/lockyc/darkfield && cd darkfield
 just test       # unit tests
 just gate       # installer lint, build, tests
-just install    # build, install to /Applications and launch
+just install    # build, notarize, install to /Applications and launch
 ```
 
 Architecture, conventions and the release process: [CLAUDE.md](CLAUDE.md).

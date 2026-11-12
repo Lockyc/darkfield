@@ -86,34 +86,33 @@ sparkle-bin:
 run: quit bundle
     @just launch {{app}}
 
-# Install to /Applications and launch
-install: quit bundle
-    rm -rf /Applications/darkfield.app
-    cp -R {{app}} /Applications/darkfield.app
-    @# the commit this build came from: lets a later release (lockstep.sh) tell whether it is newer before replacing it
-    xattr -w com.lockyc.build-commit "$(git rev-parse HEAD)$(git status --porcelain | grep -q . && echo -dirty)" /Applications/darkfield.app
-    @just launch /Applications/darkfield.app
-
-# Install a notarized build, so Darkfield Camera activates (run `apple-notary` first; ~2 min)
-install-notarized: quit bundle
+# Build, notarize and install to /Applications, then launch (~2 min; needs the Apple signing and notary env)
+install: notary-env bundle
     #!/usr/bin/env bash
     set -euo pipefail
-    # macOS validates a system extension against notarization (unless SIP is off), so an
-    # un-notarized local build installs the app but its camera extension is rejected.
-    : "${APPLE_ID:?run apple-notary first}" "${APPLE_PASSWORD:?run apple-notary first}" "${APPLE_TEAM_ID:?run apple-notary first}"
+    # macOS activates Darkfield Camera's system extension only from a notarized app.
     zip=build/darkfield-notarize.zip
     rm -f "$zip"
     ditto -c -k --keepParent {{app}} "$zip"
     xcrun notarytool submit "$zip" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
     rm -f "$zip"
     xcrun stapler staple {{app}}
+    # The running copy keeps working through the build and notarization; it quits only now.
+    just quit
     rm -rf /Applications/darkfield.app
     cp -R {{app}} /Applications/darkfield.app
+    # the commit this build came from: lets a later release (lockstep.sh) tell whether it is newer before replacing it
     xattr -w com.lockyc.build-commit "$(git rev-parse HEAD)$(git status --porcelain | grep -q . && echo -dirty)" /Applications/darkfield.app
     just launch /Applications/darkfield.app
 
-# Quits any running Darkfield, force-killing one still alive after 3s. Runs before `bundle`: a
-# Darkfield whose bundle is rewritten under it fails its screen-recording check and prompts.
+# Fails before building unless the Developer ID identity and notary credentials are exported.
+# `bundle` timestamps its signatures, which notarization requires, only with APPLE_SIGNING_IDENTITY set.
+[private]
+notary-env:
+    @: "${APPLE_SIGNING_IDENTITY:?not set}" "${APPLE_ID:?not set}" "${APPLE_PASSWORD:?not set}" "${APPLE_TEAM_ID:?not set}"
+
+# Quits any running Darkfield, force-killing one still alive after 3s. `run` quits before `bundle`:
+# a Darkfield whose bundle is rewritten under it fails its screen-recording check and prompts.
 [private]
 quit:
     #!/usr/bin/env bash

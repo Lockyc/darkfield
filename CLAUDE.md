@@ -83,8 +83,8 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
   extension needs no profile (sandbox plus a team-prefixed app group). The app is signed with
   `Support/Darkfield.entitlements` (camera only) or, with the extension,
   `Support/Darkfield-Extension.entitlements`. A system extension activates only from
-  `/Applications` and only notarized, so test it with `apple-notary` then
-  `just install-notarized`; after `just install` the camera extension is rejected.
+  `/Applications` and only notarized, which is why `just install` notarizes (run `apple-notary`
+  first).
 - **Minting the profile needs no portal clicks:** Xcode's stored account does it. Make a throwaway
   XcodeGen project with an app `com.lockyc.darkfield` (entitlements:
   `Darkfield-Extension.entitlements` minus the two identifier keys) embedding a system-extension
