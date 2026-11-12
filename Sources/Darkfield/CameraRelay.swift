@@ -1,4 +1,5 @@
 import AppKit
+@preconcurrency import AVFoundation
 import CoreMediaIO
 import DarkfieldCore
 import os
@@ -47,14 +48,42 @@ final class CameraRelay: NSObject, ObservableObject {
 
     // MARK: CoreMediaIO
 
-    /// The extension's device appears some time after activation (and again after an update),
-    /// so connecting is retried whenever the system's device list changes.
+    /// The extension's device appears a second or two after activation reports success (the
+    /// extension process starts only then), and again after an update replaces it. Neither the
+    /// activation callback nor CoreMediaIO's device-list listener reliably arrives after it, so
+    /// each trigger keeps looking for `searchWindow` until the device is there.
     private func watchDevices() {
         var address = Self.address(kCMIOHardwarePropertyDevices)
         CMIOObjectAddPropertyListenerBlock(CMIOObjectID(kCMIOObjectSystemObject), &address, .main) { [weak self] _, _ in
-            MainActor.assumeIsolated { self?.connect() }
+            MainActor.assumeIsolated { self?.search() }
         }
+        for name in [AVCaptureDevice.wasConnectedNotification, AVCaptureDevice.wasDisconnectedNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.search() }
+            }
+        }
+        search()
+    }
+
+    private static let searchWindow: TimeInterval = 30
+    private var searchUntil = Date.distantPast
+    private var searchTimer: Timer?
+
+    /// Connects now if the device is there, else keeps trying every half second for the window.
+    private func search() {
+        searchUntil = Date().addingTimeInterval(Self.searchWindow)
         connect()
+        guard device == nil, searchTimer == nil else { return }
+        searchTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard let self else { return timer.invalidate() }
+                self.connect()
+                if self.device != nil || Date() > self.searchUntil {
+                    timer.invalidate()
+                    self.searchTimer = nil
+                }
+            }
+        }
     }
 
     private func connect() {
@@ -145,7 +174,7 @@ extension CameraRelay: OSSystemExtensionRequestDelegate {
     nonisolated func request(_ request: OSSystemExtensionRequest, didFinishWithResult result: OSSystemExtensionRequest.Result) {
         MainActor.assumeIsolated {
             state = .ready
-            connect()
+            search()
         }
     }
 
