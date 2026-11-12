@@ -44,7 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.model.refreshRows()
             self?.rings.update()
         }
-        captures.onShared = { [weak self] in self?.outputs.showPreviewIfMeeting() }
+        captures.onShared = { [weak self] in self?.outputs.autoShowPreview() }
         outputs.onPreviewShown = { [weak self] shown in self?.model.previewShown = shown }
         model.showPreview = { [weak self] in self?.outputs.showPreviewIfMeeting() }
         captures.ignoredWindows = { [weak self] in self?.rings.windowIDs ?? [] }
@@ -72,6 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Settings window, so it stays reachable without the menu-bar icon.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         outputs.apply(settings.output)
+        outputs.showPreviewIfMeeting()
         showSettings()
         return false
     }
