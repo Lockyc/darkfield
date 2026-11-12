@@ -49,18 +49,26 @@ final class CameraSource {
         onCamerasChanged?()
     }
 
+    /// Every touch of the session runs on the capture queue, in call order: a stop followed by a
+    /// start can't interleave their input changes.
     func start(id: String) {
         guard runningID != id else { return }
         stop()
-        guard let device = Self.devices().first(where: { $0.uniqueID == id }),
-              let input = try? AVCaptureDeviceInput(device: device) else { return }
-        session.beginConfiguration()
-        if session.canAddInput(input) { session.addInput(input) }
-        session.commitConfiguration()
-        Self.prefer1080p30(device)
         runningID = id
         let session = session
-        queue.async { session.startRunning() }
+        queue.async {
+            guard let device = Self.devices().first(where: { $0.uniqueID == id }),
+                  let input = try? AVCaptureDeviceInput(device: device) else {
+                CameraController.log.error("capture: can't open camera")
+                return
+            }
+            session.beginConfiguration()
+            if session.canAddInput(input) { session.addInput(input) }
+            session.commitConfiguration()
+            Self.prefer1080p30(device)
+            session.startRunning()
+            CameraController.log.info("capture: started, running=\(session.isRunning) inputs=\(session.inputs.count)")
+        }
     }
 
     func stop() {
@@ -72,6 +80,7 @@ final class CameraSource {
             session.beginConfiguration()
             session.inputs.forEach(session.removeInput)
             session.commitConfiguration()
+            CameraController.log.info("capture: stopped, running=\(session.isRunning) inputs=\(session.inputs.count)")
         }
     }
 
@@ -94,8 +103,11 @@ final class CameraSource {
 
 private final class FrameSink: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     var onFrame: ((CVPixelBuffer, CMTime) -> Void)?
+    private var count = 0
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        count += 1
+        if count % 60 == 0 { CameraController.log.info("capture: \(self.count) frames") }
         guard let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         onFrame?(pixels, CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
     }
