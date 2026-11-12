@@ -22,12 +22,14 @@ final class CameraController: ObservableObject {
 
     private let source = CameraSource()
     private let pipeline: Pipeline
+    private var running = false
 
     init() {
         pipeline = Pipeline(preview: previewLayer)
         previewLayer.videoGravity = .resizeAspect
         previewLayer.backgroundColor = NSColor.black.cgColor
         source.onFrame = { [pipeline] pixels, time in pipeline.handle(pixels, time: time) }
+        pipeline.isRunning = { [weak self] in self?.running ?? false }
         source.onCamerasChanged = { [weak self] in
             guard let self else { return }
             cameras = source.cameras
@@ -47,8 +49,10 @@ final class CameraController: ObservableObject {
             return
         }
         if run, permission == .authorized, let id = settings.deviceID {
+            running = true
             source.start(id: id)
         } else {
+            running = false
             source.stop()
             previewLayer.sampleBufferRenderer.flush(removingDisplayedImage: true, completionHandler: nil)
         }
@@ -66,6 +70,8 @@ private final class Pipeline: @unchecked Sendable {
     private var _onFrame: ((CMSampleBuffer) -> Void)?
     private let processor = CameraProcessor()
     private let preview: AVSampleBufferDisplayLayer
+    /// Set once at init, read only on the main thread.
+    var isRunning: (@MainActor () -> Bool)?
 
     init(preview: AVSampleBufferDisplayLayer) { self.preview = preview }
 
@@ -88,7 +94,13 @@ private final class Pipeline: @unchecked Sendable {
             CFDictionarySetValue(dict, Unmanaged.passUnretained(kCMSampleAttachmentKey_DisplayImmediately).toOpaque(),
                                  Unmanaged.passUnretained(kCFBooleanTrue).toOpaque())
         }
+        // Checked on the main thread, where the camera is stopped: a frame still in flight when
+        // it stops would otherwise land after the flush and freeze on the preview.
         let preview = preview
-        DispatchQueue.main.async { preview.sampleBufferRenderer.enqueue(frame) }
+        DispatchQueue.main.async { [isRunning] in
+            MainActor.assumeIsolated {
+                if isRunning?() == true { preview.sampleBufferRenderer.enqueue(frame) }
+            }
+        }
     }
 }
