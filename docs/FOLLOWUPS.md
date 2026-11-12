@@ -12,9 +12,12 @@ Planned work beyond the first release. Remove an item when it lands.
 
 - **Recording.** Record the canvas to a video file. It reuses the canvas, so it adds to the app
   without changing it. Next: an `AVAssetWriter` sink fed from the same frames as the outputs.
-- **Virtual camera.** Offer the canvas as a webcam ("Darkfield Camera"). Needs a CoreMediaIO
-  camera system extension and its approval flow. Next: a camera extension target that reads
-  frames from the app.
+- **Virtual camera.** One CoreMediaIO camera system extension hosts every Darkfield camera
+  device, so each new device adds no second extension or approval. First device: the presenter
+  from any physical camera, with background blur and Center-Stage-style framing, for video apps
+  that do neither. Later devices: the canvas as a webcam, and the canvas with the presenter
+  inset. darkfield captures and processes; the extension only relays frames. Next: the
+  presenter device.
 - **Virtual monitor.** Make the canvas a display, so meeting pickers list it under Screens.
   Relies on the unsupported `CGVirtualDisplay` API, which a macOS update can break. Next: revisit
   if the "▶ Darkfield" window is still hard to find in pickers.
