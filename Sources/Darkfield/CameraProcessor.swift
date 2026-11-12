@@ -85,14 +85,16 @@ final class CameraProcessor {
     }
 
     /// This frame's person mask, 70/30 with the previous one, scaled to the source.
+    ///
+    /// Masks are read and written without colour management: they are coverage values, and a
+    /// gamma conversion on each save would skew the blend and make the mask lag behind you.
     private func smoothedMask(extent: CGRect) -> CIImage? {
         guard let raw = segmentation.results?.first?.pixelBuffer else { return nil }
-        var mask = CIImage(cvPixelBuffer: raw)
+        var mask = CIImage(cvPixelBuffer: raw, options: [.colorSpace: NSNull()])
         let size = mask.extent.size
         if let previous = previousMask, size == maskSize {
-            let now = mask.applyingFilter("CIColorMatrix", parameters: ["inputRVector": CIVector(x: 0.7, y: 0, z: 0, w: 0)])
-            let then = previous.applyingFilter("CIColorMatrix", parameters: ["inputRVector": CIVector(x: 0.3, y: 0, z: 0, w: 0)])
-            mask = now.applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: then])
+            mask = previous.applyingFilter("CIDissolveTransition",
+                                           parameters: [kCIInputTargetImageKey: mask, kCIInputTimeKey: 0.7])
         }
         // Vision reuses its result buffers, so the mask kept for the next frame is our own copy.
         if size != maskSize {
@@ -107,8 +109,8 @@ final class CameraProcessor {
             CVPixelBufferPoolCreate(nil, nil, attrs as CFDictionary, &maskPool)
         }
         if let maskPool, let copy = Self.buffer(from: maskPool) {
-            context.render(mask, to: copy)
-            previousMask = CIImage(cvPixelBuffer: copy)
+            context.render(mask, to: copy, bounds: mask.extent, colorSpace: nil)
+            previousMask = CIImage(cvPixelBuffer: copy, options: [.colorSpace: NSNull()])
             mask = previousMask!
         }
         return mask.transformed(by: CGAffineTransform(scaleX: extent.width / size.width, y: extent.height / size.height))
