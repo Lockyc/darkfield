@@ -45,13 +45,23 @@ final class StatusItem: NSObject, NSPopoverDelegate {
         return image
     }
 
+    /// Closes the panel on a click in another app. `.transient` alone stops doing this once a
+    /// picker's menu has been open: darkfield is an accessory app that never activates, and after
+    /// the menu's tracking session the popover no longer sees outside clicks.
+    private var outsideClicks: Any?
+
     func popoverWillShow(_ notification: Notification) {
         CameraController.log.info("panel will show")
+        outsideClicks = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
+            MainActor.assumeIsolated { self?.popover.performClose(nil) }
+        }
         onPanel?(true)
     }
 
     func popoverDidClose(_ notification: Notification) {
         CameraController.log.info("panel did close")
+        if let outsideClicks { NSEvent.removeMonitor(outsideClicks) }
+        outsideClicks = nil
         onPanel?(false)
     }
 
