@@ -195,14 +195,22 @@ private final class Sink: @unchecked Sendable {
     func open(device: CMIOObjectID, stream: CMIOObjectID) {
         close()
         var q: Unmanaged<CMSimpleQueue>?
-        guard CMIOStreamCopyBufferQueue(stream, { _, _, _ in }, nil, &q) == noErr, let q else { return }
+        let copied = CMIOStreamCopyBufferQueue(stream, { _, _, _ in }, nil, &q)
+        guard copied == noErr, let q else {
+            CameraController.log.error("relay: sink queue failed: \(copied)")
+            return
+        }
         lock.withLock {
             queue = q.takeRetainedValue()
             self.device = device
             self.stream = stream
         }
-        CMIODeviceStartStream(device, stream)
+        let started = CMIODeviceStartStream(device, stream)
+        CameraController.log.info("relay: sink started=\(started)")
     }
+
+    private var sent = 0
+    private var dropped = 0
 
     func close() {
         let (device, stream, open) = lock.withLock { () -> (CMIOObjectID, CMIOObjectID, Bool) in
@@ -214,8 +222,16 @@ private final class Sink: @unchecked Sendable {
 
     func enqueue(_ frame: CMSampleBuffer) {
         lock.withLock {
-            guard let queue, CMSimpleQueueGetCount(queue) < CMSimpleQueueGetCapacity(queue) else { return }
-            CMSimpleQueueEnqueue(queue, element: Unmanaged.passRetained(frame).toOpaque())
+            guard let queue else { return }
+            if CMSimpleQueueGetCount(queue) < CMSimpleQueueGetCapacity(queue) {
+                CMSimpleQueueEnqueue(queue, element: Unmanaged.passRetained(frame).toOpaque())
+                sent += 1
+            } else {
+                dropped += 1
+            }
+            if (sent + dropped) % 90 == 0 {
+                CameraController.log.info("relay: sink sent=\(self.sent) dropped=\(self.dropped) capacity=\(CMSimpleQueueGetCapacity(queue))")
+            }
         }
     }
 }

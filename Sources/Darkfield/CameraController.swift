@@ -96,8 +96,12 @@ private final class Pipeline: @unchecked Sendable {
     func handle(_ pixels: CVPixelBuffer, time: CMTime) {
         guard let frame = processor.process(pixels, time: time, settings: settings) else { return }
         onFrame?(frame)
-        // Display immediately: the preview shows what the call gets, not a re-timed copy.
-        if let attachments = CMSampleBufferGetSampleAttachmentsArray(frame, createIfNecessary: true),
+        // The preview gets its own sample buffer around the same pixels, marked to display
+        // immediately so it shows what the call gets, not a re-timed copy. The mark never goes on
+        // `frame`: the camera extension fails to consume a sample carrying it (OSStatus -6).
+        guard let pixels = CMSampleBufferGetImageBuffer(frame),
+              let shown = CameraProcessor.sampleBuffer(pixels, time: time) else { return }
+        if let attachments = CMSampleBufferGetSampleAttachmentsArray(shown, createIfNecessary: true),
            CFArrayGetCount(attachments) > 0 {
             let dict = unsafeBitCast(CFArrayGetValueAtIndex(attachments, 0), to: CFMutableDictionary.self)
             CFDictionarySetValue(dict, Unmanaged.passUnretained(kCMSampleAttachmentKey_DisplayImmediately).toOpaque(),
@@ -108,7 +112,7 @@ private final class Pipeline: @unchecked Sendable {
         let preview = preview
         DispatchQueue.main.async { [isRunning] in
             MainActor.assumeIsolated {
-                if isRunning?() == true { preview.sampleBufferRenderer.enqueue(frame) }
+                if isRunning?() == true { preview.sampleBufferRenderer.enqueue(shown) }
             }
         }
     }
