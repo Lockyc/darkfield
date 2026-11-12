@@ -45,8 +45,15 @@ final class StatusItem: NSObject, NSPopoverDelegate {
         return image
     }
 
-    func popoverWillShow(_ notification: Notification) { onPanel?(true) }
-    func popoverDidClose(_ notification: Notification) { onPanel?(false) }
+    func popoverWillShow(_ notification: Notification) {
+        CameraController.log.info("panel will show")
+        onPanel?(true)
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        CameraController.log.info("panel did close")
+        onPanel?(false)
+    }
 
     @objc private func toggle() {
         guard let button = item.button else { return }

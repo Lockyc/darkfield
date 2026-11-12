@@ -1,6 +1,7 @@
 import AppKit
 @preconcurrency import AVFoundation
 import DarkfieldCore
+import os
 
 /// Runs the physical camera when `CameraDemand` says so, processes each frame once, and hands
 /// the result to the panel's preview and to `onProcessedFrame` (the camera extension).
@@ -23,6 +24,9 @@ final class CameraController: ObservableObject {
     private let source = CameraSource()
     private let pipeline: Pipeline
     private var running = false
+    /// Every on/off decision, so a camera light that stays on can be traced:
+    /// `log show --predicate 'subsystem == "com.lockyc.darkfield"' --info`.
+    static let log = Logger(subsystem: "com.lockyc.darkfield", category: "camera")
 
     init() {
         pipeline = Pipeline(preview: previewLayer)
@@ -42,6 +46,7 @@ final class CameraController: ObservableObject {
         permission = AVCaptureDevice.authorizationStatus(for: .video)
         status = demand.status(chosenID: settings.deviceID, chosenName: settings.deviceName, connected: cameras)
         let run = demand.shouldRun(chosen: settings.deviceID, connected: cameras)
+        Self.log.info("reconcile run=\(run) client=\(self.demand.clientStreaming) preview=\(self.demand.preview) panelOpen=\(self.demand.panelOpen) cameras=\(self.cameras.count)")
         if run, permission == .notDetermined {
             AVCaptureDevice.requestAccess(for: .video) { [weak self] _ in
                 Task { @MainActor [weak self] in self?.reconcile() }
