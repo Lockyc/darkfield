@@ -7,6 +7,7 @@ import SwiftUI
 struct CameraSectionView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var camera: CameraController
+    @ObservedObject var relay: CameraRelay
 
     private var settings: Binding<CameraSettings> { $model.settings.camera }
 
@@ -24,6 +25,7 @@ struct CameraSectionView: View {
                     .help("Flips only this preview. The call always sees you unflipped.")
             }
             statusLine
+            relayLine
             HStack {
                 Text("Camera").font(.caption).foregroundStyle(.secondary)
                 Spacer()
@@ -73,6 +75,29 @@ struct CameraSectionView: View {
             case .off, .live:
                 EmptyView()
             }
+        }
+    }
+
+    /// Whether video apps can pick Darkfield Camera. Preview works regardless.
+    @ViewBuilder private var relayLine: some View {
+        switch relay.state {
+        case .notInThisBuild:
+            Text("This build doesn't include Darkfield Camera. Preview still works.")
+                .font(.caption).foregroundStyle(.secondary)
+        case .activating:
+            Text("Setting up Darkfield Camera…").font(.caption).foregroundStyle(.secondary)
+        case .needsApproval:
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)
+                Text("Allow Darkfield Camera in System Settings").font(.caption)
+                Spacer()
+                Button("Open Settings") { relay.openApprovalSettings() }.controlSize(.small)
+            }
+        case .failed(let message):
+            Text("Darkfield Camera couldn't start: \(message)").font(.caption).foregroundStyle(.red)
+        case .ready:
+            Text("Pick “Darkfield Camera” as the camera in your video app.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 

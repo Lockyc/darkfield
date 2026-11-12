@@ -50,6 +50,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startPointer()
         model.updater = Updater.make()
         statusItem = StatusItem(model: model, openSettings: { [weak self] in self?.showSettings() })
+        let relay = model.relay
+        model.camera.onProcessedFrame = { frame in relay.send(frame) }
+        relay.onClientStreaming = { [weak self] streaming in self?.model.camera.demand.clientStreaming = streaming }
+        relay.activate()
         statusItem?.onPanel = { [weak self] open in
             guard let camera = self?.model.camera else { return }
             if open { camera.demand.panelOpen = true } else { camera.demand.panelClosed() }

@@ -43,6 +43,7 @@ final class AppModel: ObservableObject {
     let captures: CaptureManager
     let canvas: CanvasModel
     let camera = CameraController()
+    let relay = CameraRelay()
 
     init(settings: Settings, captures: CaptureManager, canvas: CanvasModel) {
         self.settings = settings

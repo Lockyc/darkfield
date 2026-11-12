@@ -24,7 +24,7 @@ struct PanelView: View {
             HStack(alignment: .top, spacing: 14) {
                 presenting.frame(width: 320)
                 Divider()
-                CameraSectionView(model: model, camera: model.camera).frame(width: 320)
+                CameraSectionView(model: model, camera: model.camera, relay: model.relay).frame(width: 320)
             }
 
             HStack {
