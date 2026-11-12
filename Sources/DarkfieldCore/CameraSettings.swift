@@ -12,6 +12,8 @@ public struct CameraSettings: Codable, Equatable, Sendable {
     public var framing = true
     /// 0 frames wide around the presenter, 1 tight.
     public var framingTightness: Double = 0.5
+    /// Flips the panel's preview like a mirror. A call always gets the unflipped picture.
+    public var mirrorPreview = true
 
     public init(deviceID: String? = nil, deviceName: String? = nil, blur: Bool = true,
                 blurStrength: Double = 0.7, framing: Bool = true, framingTightness: Double = 0.5) {
@@ -24,7 +26,7 @@ public struct CameraSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case deviceID, deviceName, blur, blurStrength, framing, framingTightness
+        case deviceID, deviceName, blur, blurStrength, framing, framingTightness, mirrorPreview
     }
 
     /// Field by field, like `Settings`: a missing or undecodable key takes its default.
@@ -40,6 +42,7 @@ public struct CameraSettings: Codable, Equatable, Sendable {
         blurStrength = field(.blurStrength, blurStrength)
         framing = field(.framing, framing)
         framingTightness = field(.framingTightness, framingTightness)
+        mirrorPreview = field(.mirrorPreview, mirrorPreview)
     }
 }
 

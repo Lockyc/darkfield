@@ -10,6 +10,14 @@ final class CameraSettingsTests: XCTestCase {
         XCTAssertEqual(c.blurStrength, 0.7)
         XCTAssertTrue(c.framing)
         XCTAssertEqual(c.framingTightness, 0.5)
+        XCTAssertTrue(c.mirrorPreview)
+    }
+
+    func testMirrorPreviewSurvivesRoundTrip() throws {
+        var c = CameraSettings()
+        c.mirrorPreview = false
+        let back = try JSONDecoder().decode(CameraSettings.self, from: JSONEncoder().encode(c))
+        XCTAssertFalse(back.mirrorPreview)
     }
 
     func testOldSettingsWithoutCameraKeepTheRest() throws {

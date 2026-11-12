@@ -40,10 +40,15 @@ struct CameraSectionView: View {
                     .disabled(!model.settings.camera.framing)
                 Text("Tight").font(.caption).foregroundStyle(.secondary)
             }
-            Toggle("Preview", isOn: $camera.demand.preview)
-                .disabled(model.settings.camera.deviceID == nil)
-                .help(model.settings.camera.deviceID == nil ? "Choose a camera first" : "")
-            CameraPreview(layer: camera.previewLayer)
+            HStack {
+                Toggle("Preview", isOn: $camera.demand.preview)
+                    .disabled(model.settings.camera.deviceID == nil)
+                    .help(model.settings.camera.deviceID == nil ? "Choose a camera first" : "")
+                Spacer()
+                Toggle("Mirror preview", isOn: settings.mirrorPreview)
+                    .help("Flips only this preview. The call always sees you unflipped.")
+            }
+            CameraPreview(layer: camera.previewLayer, mirrored: model.settings.camera.mirrorPreview)
                 .frame(width: 320, height: 180)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             statusLine
@@ -84,6 +89,7 @@ struct CameraSectionView: View {
 /// Hosts the controller's display layer, which shows the same processed frames a call gets.
 struct CameraPreview: NSViewRepresentable {
     let layer: AVSampleBufferDisplayLayer
+    let mirrored: Bool
 
     func makeNSView(context: Context) -> NSView {
         let view = LayerHost()
@@ -93,7 +99,9 @@ struct CameraPreview: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ view: NSView, context: Context) {}
+    func updateNSView(_ view: NSView, context: Context) {
+        layer.setAffineTransform(mirrored ? CGAffineTransform(scaleX: -1, y: 1) : .identity)
+    }
 
     private final class LayerHost: NSView {
         override func layout() {
