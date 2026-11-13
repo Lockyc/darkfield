@@ -92,6 +92,11 @@ struct CameraSectionView: View {
                 Spacer()
                 Button("Open Settings") { relay.openApprovalSettings() }.controlSize(.small)
             }
+        case .needsRestart:
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)
+                Text("Restart your Mac to finish setting up Darkfield Camera").font(.caption)
+            }
         case .failed(let message):
             Text("Darkfield Camera couldn't start: \(message)").font(.caption).foregroundStyle(.red)
         case .ready:
