@@ -27,11 +27,21 @@ final class ShareRings {
     /// The rings' own window numbers.
     var windowIDs: Set<CGWindowID> { Set(rings.values.map { CGWindowID($0.windowNumber) }) }
 
+    /// Set while a window picker is open. A ring floats over the share window shown for picking,
+    /// and macOS's click-to-pick picker offers no window under a raised one.
+    var hidden = false {
+        didSet { update() }
+    }
+
     func update() {
         let ids = sharedIDs()
         for (id, ring) in rings where !ids.contains(id) {
             rings[id] = nil
             fadeOut(ring)
+        }
+        if hidden {
+            for ring in rings.values { ring.orderOut(nil) }
+            return
         }
         guard !ids.isEmpty else { return }
         let list = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]) ?? []

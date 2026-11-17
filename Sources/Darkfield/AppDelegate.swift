@@ -46,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         captures.onShared = { [weak self] in self?.outputs.autoShowPreview() }
         outputs.onPreviewShown = { [weak self] shown in self?.model.previewShown = shown }
+        outputs.onPicking = { [weak self] picking in self?.rings.hidden = picking }
         model.showPreview = { [weak self] in self?.outputs.showPreviewIfMeeting() }
         captures.ignoredWindows = { [weak self] in self?.rings.windowIDs ?? [] }
         captures.start()

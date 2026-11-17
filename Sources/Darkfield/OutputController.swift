@@ -23,6 +23,8 @@ final class OutputController {
     var onFallback: ((String) -> Void)?
     /// Called with whether the preview is on screen, whenever that changes.
     var onPreviewShown: ((Bool) -> Void)?
+    /// Called with true as the share window is shown for a picker, false as it is parked again.
+    var onPicking: ((Bool) -> Void)?
     /// Set while a window picker is open and the share window is shown for clicking; its
     /// expiry parks the window again if the picker's close is never announced.
     private var pickingExpiry: Timer?
@@ -68,6 +70,7 @@ final class OutputController {
         let display = CGRect(x: main.frame.minX, y: primaryHeight - main.frame.maxY,
                              width: main.frame.width, height: main.frame.height)
         let cg = Parking.pickingFrame(size: Layout.canvas, display: display)
+        onPicking?(true)
         w.ignoresMouseEvents = false
         w.collectionBehavior.remove(.stationary)
         let frame = ScreenSpace.toAppKit(cg, primaryHeight: primaryHeight)
@@ -92,6 +95,7 @@ final class OutputController {
         shareWindow?.ignoresMouseEvents = true
         shareWindow?.collectionBehavior.insert(.stationary)
         if current == .meeting { parkShare() }
+        onPicking?(false)
     }
 
     func apply(_ output: Output) {
