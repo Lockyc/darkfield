@@ -27,6 +27,30 @@ final class ParkingTests: XCTestCase {
     }
 }
 
+final class ShareWindowTraitsTests: XCTestCase {
+    func testPickingMakesTheShareWindowPickable() {
+        let t = ShareWindowTraits.for(picking: true, output: .meeting)
+        XCTAssertFalse(t.raised)
+        XCTAssertFalse(t.ignoresMouse)
+        XCTAssertFalse(t.stationary)
+        XCTAssertFalse(t.ringsShown)
+    }
+
+    func testEndingPickingRestoresEveryParkedTrait() {
+        let parked = ShareWindowTraits.for(picking: false, output: .meeting)
+        XCTAssertFalse(parked.raised)
+        XCTAssertTrue(parked.ignoresMouse)
+        XCTAssertTrue(parked.stationary)
+        XCTAssertTrue(parked.ringsShown)
+        XCTAssertEqual(parked, .parked)
+    }
+
+    func testOnlyTheMeetingOutputIsShownForPicking() {
+        XCTAssertEqual(ShareWindowTraits.for(picking: true, output: .projector(2)), .parked)
+        XCTAssertEqual(ShareWindowTraits.for(picking: true, output: nil), .parked)
+    }
+}
+
 final class PickingTests: XCTestCase {
     func testCentredOnTheDisplaySoAClickCanReachIt() {
         let tv = CGRect(x: 0, y: 0, width: 3840, height: 2160)

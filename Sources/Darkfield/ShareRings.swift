@@ -27,8 +27,7 @@ final class ShareRings {
     /// The rings' own window numbers.
     var windowIDs: Set<CGWindowID> { Set(rings.values.map { CGWindowID($0.windowNumber) }) }
 
-    /// Set while a window picker is open. A ring floats over the share window shown for picking,
-    /// and macOS's click-to-pick picker offers no window under a raised one.
+    /// Set while `ShareWindowTraits.ringsShown` is false.
     var hidden = false {
         didSet { update() }
     }

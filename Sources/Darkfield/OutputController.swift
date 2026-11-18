@@ -23,8 +23,8 @@ final class OutputController {
     var onFallback: ((String) -> Void)?
     /// Called with whether the preview is on screen, whenever that changes.
     var onPreviewShown: ((Bool) -> Void)?
-    /// Called with true as the share window is shown for a picker, false as it is parked again.
-    var onPicking: ((Bool) -> Void)?
+    /// Called with the share window's traits as it is shown for a picker and as it is parked again.
+    var onTraits: ((ShareWindowTraits) -> Void)?
     /// Set while a window picker is open and the share window is shown for clicking; its
     /// expiry parks the window again if the picker's close is never announced.
     private var pickingExpiry: Timer?
@@ -61,18 +61,14 @@ final class OutputController {
     }
 
     /// Shows the share window centred on the main display, in front of other windows, so a picker
-    /// that selects by clicking can reach it. Meeting output only. While shown it stays at normal
-    /// level, takes the mouse and drops `.stationary`: macOS's picker offers no window that is
-    /// raised, that clicks pass through, or that is stationary.
+    /// that selects by clicking can reach it, with the picking `ShareWindowTraits`. Meeting output only.
     private func showForPicking() {
         guard current == .meeting, let w = shareWindow, let main = NSScreen.screens.first else { return }
         let primaryHeight = main.frame.height
         let display = CGRect(x: main.frame.minX, y: primaryHeight - main.frame.maxY,
                              width: main.frame.width, height: main.frame.height)
         let cg = Parking.pickingFrame(size: Layout.canvas, display: display)
-        onPicking?(true)
-        w.ignoresMouseEvents = false
-        w.collectionBehavior.remove(.stationary)
+        applyTraits(.for(picking: true, output: current))
         let frame = ScreenSpace.toAppKit(cg, primaryHeight: primaryHeight)
         w.setFrame(frame, display: true)
         w.orderFrontRegardless()
@@ -92,10 +88,23 @@ final class OutputController {
         pickingExpiry?.invalidate()
         pickingExpiry = nil
         pickingOverlay.removeFromSuperview()
-        shareWindow?.ignoresMouseEvents = true
-        shareWindow?.collectionBehavior.insert(.stationary)
+        applyTraits(.for(picking: false, output: current))
         if current == .meeting { parkShare() }
-        onPicking?(false)
+    }
+
+    private func applyTraits(_ traits: ShareWindowTraits) {
+        onTraits?(traits)
+        if let w = shareWindow { Self.set(traits, on: w) }
+    }
+
+    private static func set(_ traits: ShareWindowTraits, on w: NSWindow) {
+        w.level = traits.raised ? .floating : .normal
+        w.ignoresMouseEvents = traits.ignoresMouse
+        if traits.stationary {
+            w.collectionBehavior.insert(.stationary)
+        } else {
+            w.collectionBehavior.remove(.stationary)
+        }
     }
 
     func apply(_ output: Output) {
@@ -141,10 +150,9 @@ final class OutputController {
             w.title = Self.meetingTitle
             w.backgroundColor = .black
             w.hasShadow = false
-            w.ignoresMouseEvents = true
-            // Normal level: Chromium's window picker lists only level-0 windows. On every Space,
-            // so it streams whichever Space the presenter is on.
-            w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+            // On every Space, so it streams whichever Space the presenter is on.
+            w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+            Self.set(.parked, on: w)
             w.contentView = CanvasView(model: canvas)
             w.isReleasedWhenClosed = false
             shareWindow = w
