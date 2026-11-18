@@ -9,10 +9,12 @@ let package = Package(
     ],
     targets: [
         .target(name: "DarkfieldCore"),
-        .executableTarget(name: "Darkfield", dependencies: ["DarkfieldCore", .product(name: "Sparkle", package: "Sparkle")]),
+        .target(name: "DarkfieldImaging"),
+        .executableTarget(name: "Darkfield", dependencies: ["DarkfieldCore", "DarkfieldImaging", .product(name: "Sparkle", package: "Sparkle")]),
         // The camera system extension; `just bundle` wraps it into darkfield.app.
         .executableTarget(name: "DarkfieldCameraExtension", dependencies: ["DarkfieldCore"]),
         .testTarget(name: "DarkfieldCoreTests", dependencies: ["DarkfieldCore"]),
+        .testTarget(name: "DarkfieldImagingTests", dependencies: ["DarkfieldImaging"]),
     ],
     swiftLanguageModes: [.v5]
 )

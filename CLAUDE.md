@@ -22,13 +22,16 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 ## Layout
 
 - `Sources/DarkfieldCore/` uses Foundation/CoreGraphics only. It holds layout, pointer
-  mapping and timing, the shared-window set and settings. **Every unit test lives here**; keep
-  AppKit out of it.
+  mapping and timing, the shared-window set and settings. **Every unit test lives here or in
+  `DarkfieldImaging`**; keep AppKit out of both.
+- `Sources/DarkfieldImaging/` uses CoreImage/CoreVideo only: the camera mask's smoothing
+  (`MaskSmoother`).
 - `Sources/Darkfield/` is the AppKit executable: capture, canvas layers, outputs and the panel,
   plus Darkfield Camera's capture, processing and relay (`Camera*.swift`).
 - `Sources/DarkfieldCameraExtension/` is the CoreMediaIO camera system extension. It shares only
   `DarkfieldCore` (`CameraIDs`, `IdleFrame`) with the app.
-- `Tests/DarkfieldCoreTests/` holds the XCTest suite, run with `swift test`.
+- `Tests/DarkfieldCoreTests/` and `Tests/DarkfieldImagingTests/` hold the XCTest suites, run
+  with `swift test`.
 - `Support/Info.plist` is the bundle template; `just bundle` stamps `VERSION` into it.
 - `Support/icon.svg` is the icon master; `just icons` renders `AppIcon.icns` and `icon.png`
   from it. The menu-bar mark, `StatusItem.menuBarImage`, is drawn in code to match it, so change

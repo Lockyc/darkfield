@@ -2,6 +2,7 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import CoreMedia
 import DarkfieldCore
+import DarkfieldImaging
 import Vision
 
 /// Turns a raw camera frame into Darkfield Camera's frame: the background blurred behind the
@@ -14,10 +15,7 @@ final class CameraProcessor {
     private var pool: CVPixelBufferPool?
     private var framing = Framing()
     private var lastTime: CMTime?
-    /// The previous frame's mask, blended into the next so its edge doesn't flicker.
-    private var previousMask: CIImage?
-    private var maskPool: CVPixelBufferPool?
-    private var maskSize: CGSize = .zero
+    private lazy var masks = MaskSmoother(context: context)
     private let segmentation: VNGeneratePersonSegmentationRequest = {
         let r = VNGeneratePersonSegmentationRequest()
         r.qualityLevel = .balanced
@@ -66,7 +64,7 @@ final class CameraProcessor {
             blend.maskImage = mask
             image = blend.outputImage ?? source
         } else {
-            previousMask = nil
+            masks.reset()
         }
 
         let scaled = image.cropped(to: r)
@@ -84,35 +82,11 @@ final class CameraProcessor {
         return CGRect(x: b.minX, y: 1 - b.maxY, width: b.width, height: b.height)
     }
 
-    /// This frame's person mask, 70/30 with the previous one, scaled to the source.
-    ///
-    /// Masks are read and written without colour management: they are coverage values, and a
-    /// gamma conversion on each save would skew the blend and make the mask lag behind you.
+    /// This frame's person mask, smoothed by `MaskSmoother`, scaled to the source.
     private func smoothedMask(extent: CGRect) -> CIImage? {
         guard let raw = segmentation.results?.first?.pixelBuffer else { return nil }
-        var mask = CIImage(cvPixelBuffer: raw, options: [.colorSpace: NSNull()])
+        let mask = masks.smooth(raw)
         let size = mask.extent.size
-        if let previous = previousMask, size == maskSize {
-            mask = previous.applyingFilter("CIDissolveTransition",
-                                           parameters: [kCIInputTargetImageKey: mask, kCIInputTimeKey: 0.7])
-        }
-        // Vision reuses its result buffers, so the mask kept for the next frame is our own copy.
-        if size != maskSize {
-            maskSize = size
-            let attrs: [String: Any] = [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_OneComponent8,
-                kCVPixelBufferWidthKey as String: Int(size.width),
-                kCVPixelBufferHeightKey as String: Int(size.height),
-                kCVPixelBufferIOSurfacePropertiesKey as String: [:],
-            ]
-            maskPool = nil
-            CVPixelBufferPoolCreate(nil, nil, attrs as CFDictionary, &maskPool)
-        }
-        if let maskPool, let copy = Self.buffer(from: maskPool) {
-            context.render(mask, to: copy, bounds: mask.extent, colorSpace: nil)
-            previousMask = CIImage(cvPixelBuffer: copy, options: [.colorSpace: NSNull()])
-            mask = previousMask!
-        }
         return mask.transformed(by: CGAffineTransform(scaleX: extent.width / size.width, y: extent.height / size.height))
     }
 
