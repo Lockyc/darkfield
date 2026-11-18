@@ -8,17 +8,13 @@ import SystemExtensions
 /// into its sink stream, and reports whether any app is streaming from it.
 @MainActor
 final class CameraRelay: NSObject, ObservableObject {
-    enum State: Equatable {
-        case notInThisBuild
-        case activating
-        case needsApproval
-        case ready
-        /// Installed, but macOS isn't running it; a restart registers it again.
-        case needsRestart
-        case failed(String)
-    }
+    typealias State = ExtensionActivation.State
 
     @Published private(set) var state: State = .activating
+    private var activation = ExtensionActivation(
+        version: CameraRelay.extensionVersion,
+        relaunchedVersion: UserDefaults.standard.string(forKey: CameraRelay.relaunchedKey),
+        repairedVersion: UserDefaults.standard.string(forKey: CameraRelay.repairedKey))
     /// True while some app streams from Darkfield Camera.
     var onClientStreaming: ((Bool) -> Void)?
 
@@ -71,45 +67,36 @@ final class CameraRelay: NSObject, ObservableObject {
             .infoDictionary?["CFBundleVersion"] as? String ?? "?"
     }
 
-    /// A process that is already running never sees a camera that a newly installed or replaced
-    /// extension publishes: not in CoreMediaIO's device list, its listener, or AVFoundation's
-    /// notifications. Only a new process does. So once activation succeeds, darkfield relaunches
-    /// if the device still isn't visible — at most once per extension version, so a device that
-    /// never appears can't cause a relaunch loop.
-    ///
-    /// An upgrade can leave the new version "activated enabled" with no launchd job behind it
-    /// (launchd refuses the new job while the old one is still going away), so nothing ever
-    /// starts it. When the device is still missing after the relaunch, darkfield deactivates and
-    /// reactivates the extension once per version, which registers the job again, then relaunches
-    /// to see it. If that fails too, only a restart brings the camera up.
-    private func relaunchIfDeviceUnseen() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self, self.device == nil else { return }
-                let version = Self.extensionVersion
-                let defaults = UserDefaults.standard
-                if defaults.string(forKey: Self.relaunchedKey) != version {
-                    defaults.set(version, forKey: Self.relaunchedKey)
-                    Self.relaunch("to see extension \(version)")
-                } else if defaults.string(forKey: Self.repairedKey) != version {
-                    defaults.set(version, forKey: Self.repairedKey)
-                    CameraController.log.error("relay: device not visible after relaunching for \(version); reactivating")
-                    self.repairing = true
-                    let request = OSSystemExtensionRequest.deactivationRequest(forExtensionWithIdentifier: Self.extensionID, queue: .main)
-                    request.delegate = self
-                    OSSystemExtensionManager.shared.submitRequest(request)
-                } else {
-                    CameraController.log.error("relay: device not visible after reactivating \(version)")
-                    self.state = .needsRestart
-                }
+    /// Hands `event` to `ExtensionActivation`, persists its once-per-version guards, then carries
+    /// out what it decided. The guards are written before a relaunch ends this process.
+    private func feed(_ event: ExtensionActivation.Event) {
+        let action = activation.handle(event)
+        state = activation.state
+        let defaults = UserDefaults.standard
+        defaults.set(activation.relaunchedVersion, forKey: Self.relaunchedKey)
+        defaults.set(activation.repairedVersion, forKey: Self.repairedKey)
+        let version = activation.version
+        switch action {
+        case .none:
+            if event == .unseenTimeout, state == .needsRestart {
+                CameraController.log.error("relay: device not visible after reactivating \(version)")
+            }
+        case .relaunch:
+            Self.relaunch("to see extension \(version)")
+        case .deactivate:
+            CameraController.log.error("relay: device not visible after relaunching for \(version); reactivating")
+            let request = OSSystemExtensionRequest.deactivationRequest(forExtensionWithIdentifier: Self.extensionID, queue: .main)
+            request.delegate = self
+            OSSystemExtensionManager.shared.submitRequest(request)
+        case .reactivate:
+            CameraController.log.info("relay: deactivated for repair; reactivating")
+            submitActivation()
+        case .awaitDevice:
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                MainActor.assumeIsolated { self?.feed(.unseenTimeout) }
             }
         }
     }
-
-    /// Set while a repair's deactivation is in flight, so its result starts the reactivation.
-    private var repairing = false
-    /// Set once this process has reactivated the extension.
-    private var reactivated = false
 
     private static func relaunch(_ reason: String) {
         CameraController.log.info("relay: relaunching \(reason)")
@@ -128,18 +115,19 @@ final class CameraRelay: NSObject, ObservableObject {
             device = nil
             sourceStream = nil
             sink.close()
+            feed(.deviceGone)
             return
         }
         guard found != device else { return }
         device = found
-        state = .ready
         let streams = Self.objects(found, kCMIODevicePropertyStreams)
         let sinkName = "\(CameraIDs.deviceName) Input"
         guard let sinkStream = streams.first(where: { Self.string($0, kCMIOObjectPropertyName) == sinkName }),
               let source = streams.first(where: { $0 != sinkStream }) else {
-            state = .failed("Darkfield Camera is missing a stream")
+            feed(.deviceUnusable("Darkfield Camera is missing a stream"))
             return
         }
+        feed(.deviceSeen)
         sourceStream = source
         sink.open(device: found, stream: sinkStream)
         var address = CMIOObjectPropertyAddress(mSelector: CameraIDs.clientsSelector,
@@ -203,33 +191,20 @@ extension CameraRelay: OSSystemExtensionRequestDelegate {
     }
 
     nonisolated func requestNeedsUserApproval(_ request: OSSystemExtensionRequest) {
-        MainActor.assumeIsolated { state = .needsApproval }
+        MainActor.assumeIsolated { feed(.needsApproval) }
     }
 
     nonisolated func request(_ request: OSSystemExtensionRequest, didFinishWithResult result: OSSystemExtensionRequest.Result) {
         MainActor.assumeIsolated {
-            if repairing {
-                repairing = false
-                reactivated = true
-                CameraController.log.info("relay: deactivated for repair; reactivating")
-                submitActivation()
-                return
-            }
             connect()
-            if reactivated, device == nil {
-                // This process can't see the reactivated extension's device until it relaunches.
-                Self.relaunch("to see reactivated extension \(Self.extensionVersion)")
-                return
-            }
-            relaunchIfDeviceUnseen()
+            feed(.activationFinished)
         }
     }
 
     nonisolated func request(_ request: OSSystemExtensionRequest, didFailWithError error: Error) {
         MainActor.assumeIsolated {
-            repairing = false
             CameraController.log.error("relay: activation failed: \(error.localizedDescription)")
-            state = .failed(error.localizedDescription)
+            feed(.failed(error.localizedDescription))
         }
     }
 }
