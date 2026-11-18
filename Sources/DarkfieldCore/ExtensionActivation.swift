@@ -89,6 +89,7 @@ public struct ExtensionActivation: Equatable, Sendable {
             return .none
         case .deviceGone:
             deviceVisible = false
+            if state == .ready { state = .activating }
             return .none
         case .activationFinished:
             if repairing {

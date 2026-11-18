@@ -40,7 +40,13 @@ final class ExtensionActivationTests: XCTestCase {
                 for repaired in starts {
                     var relaunches = 0, deactivates = 0
                     var bothUsedBefore = relaunched == version && repaired == version
-                    run(events, relaunched: relaunched, repaired: repaired) { a, _, action in
+                    var seen = false
+                    run(events, relaunched: relaunched, repaired: repaired) { a, event, action in
+                        if event == .deviceSeen { seen = true }
+                        if event == .deviceGone || action == .relaunch { seen = false }
+                        if a.state == .ready {
+                            XCTAssertTrue(seen, "ready without the device in view: \(events)")
+                        }
                         if action == .relaunch { relaunches += 1 }
                         if action == .deactivate { deactivates += 1 }
                         if a.state == .needsRestart {
@@ -74,6 +80,13 @@ final class ExtensionActivationTests: XCTestCase {
         XCTAssertEqual(a.handle(.activationFinished), .awaitDevice)
         XCTAssertEqual(a.handle(.unseenTimeout), .none)
         XCTAssertEqual(a.state, .needsRestart)
+    }
+
+    func testAReplacedExtensionsDeviceGoingAwayIsNotReady() {
+        var a = ExtensionActivation(version: version)
+        _ = a.handle(.deviceSeen)
+        _ = a.handle(.deviceGone)
+        XCTAssertEqual(a.state, .activating)
     }
 
     func testADeviceSeenInTimeNeedsNoRelaunch() {
