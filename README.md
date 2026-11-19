@@ -74,6 +74,12 @@ you quit and reopen it.
 - **Settings** — the share, fit and pointer shortcuts, the halo's fade time, and the wallpaper behind
   the canvas: the primary display's, another display's, or an image you choose.
 
+## Limits
+
+- The canvas shows whole windows only: no cropping to a region, and a shared window's menus,
+  popovers and sheets don't appear on it.
+- A presented Google Slides deck keeps the browser's black letterbox bars.
+
 ## Status
 
 In use, `0.x`. Planned next: recording, the canvas as a camera, and cropping. The full list:
