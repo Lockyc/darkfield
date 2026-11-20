@@ -64,7 +64,7 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 - **Wallpaper.** The canvas background comes from streaming the system wallpaper window: the
   `SCWindow` owned by `com.apple.WindowManager`, titled `Wallpaper`, that is `isOnScreen` and
   whose frame is the target display's. While a window is shared this tracks rotating, dynamic
-  and folder-shuffled wallpapers live. With nothing shared, darkfield captures nothing at all
+  and folder-shuffled wallpapers live. With nothing shared, it takes one frame and stops
   (`Wallpaper.update`'s `live`). Don't use `NSWorkspace.desktopImageURL(for:)`: for a folder rotation it
   returns the folder, not the image on screen. Each display also has an off-screen `Wallpaper`
   window, and capturing that fails with `-3811`. Enumerating these windows needs
@@ -75,7 +75,9 @@ Swift package using AppKit and ScreenCaptureKit, for macOS 14+. What's next:
 
 ## Build, test, verify, branches
 
-- `just test`, `just gate`; `just run` builds and launches `build/darkfield.app`.
+- `just test`, `just gate`. `just run` (build, quit, relaunch) is the presenter's own recipe and
+  takes focus; to verify as an agent, `just quit`, `just bundle`, then
+  `open -g -j build/darkfield.app`.
 - Verify UI changes in the running app with `winshot`. Screen Recording permission must be
   granted to the built bundle. The panel is a transient popover that `winshot` doesn't list and
   that closes on focus loss (turning Preview off), so a camera check needs the presenter's own

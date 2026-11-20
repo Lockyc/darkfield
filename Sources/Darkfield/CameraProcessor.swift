@@ -6,10 +6,9 @@ import DarkfieldImaging
 import Vision
 
 /// Turns a raw camera frame into Darkfield Camera's frame: the background blurred behind the
-/// presenter, cropped by `Framing`, scaled to 1920×1080 BGRA. Used from the capture queue only.
+/// presenter, cropped by `Framing`, scaled to `CameraIDs`' size (the one format the extension
+/// advertises) in BGRA. Used from the capture queue only.
 final class CameraProcessor {
-    static let width = 1920
-    static let height = 1080
 
     private let context = CIContext(options: [.cacheIntermediates: false])
     private var pool: CVPixelBufferPool?
@@ -27,8 +26,8 @@ final class CameraProcessor {
     init() {
         let attrs: [String: Any] = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-            kCVPixelBufferWidthKey as String: Self.width,
-            kCVPixelBufferHeightKey as String: Self.height,
+            kCVPixelBufferWidthKey as String: CameraIDs.width,
+            kCVPixelBufferHeightKey as String: CameraIDs.height,
             kCVPixelBufferIOSurfacePropertiesKey as String: [:],
         ]
         CVPixelBufferPoolCreate(nil, nil, attrs as CFDictionary, &pool)
@@ -56,7 +55,7 @@ final class CameraProcessor {
         if settings.blur, let mask = smoothedMask(extent: extent) {
             // The radius is set in output pixels; the crop is scaled up to the output, so blur the
             // source by the radius shrunk by that scale.
-            let radius = BlurScale.radius(strength: settings.blurStrength, height: Double(Self.height)) * Double(r.height) / Double(Self.height)
+            let radius = BlurScale.radius(strength: settings.blurStrength, height: Double(CameraIDs.height)) * Double(r.height) / Double(CameraIDs.height)
             let blurred = source.clampedToExtent().applyingGaussianBlur(sigma: radius / 2).cropped(to: extent)
             let blend = CIFilter.blendWithMask()
             blend.inputImage = source
@@ -69,9 +68,9 @@ final class CameraProcessor {
 
         let scaled = image.cropped(to: r)
             .transformed(by: CGAffineTransform(translationX: -r.minX, y: -r.minY)
-                .concatenating(CGAffineTransform(scaleX: CGFloat(Self.width) / r.width, y: CGFloat(Self.height) / r.height)))
+                .concatenating(CGAffineTransform(scaleX: CGFloat(CameraIDs.width) / r.width, y: CGFloat(CameraIDs.height) / r.height)))
         guard let pool, let out = Self.buffer(from: pool) else { return nil }
-        context.render(scaled, to: out, bounds: CGRect(x: 0, y: 0, width: Self.width, height: Self.height),
+        context.render(scaled, to: out, bounds: CGRect(x: 0, y: 0, width: CameraIDs.width, height: CameraIDs.height),
                        colorSpace: CGColorSpace(name: CGColorSpace.sRGB))
         return Self.sampleBuffer(out, time: time)
     }

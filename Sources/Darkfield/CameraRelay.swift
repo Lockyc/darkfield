@@ -111,7 +111,11 @@ final class CameraRelay: NSObject, ObservableObject {
         let found = Self.objects(CMIOObjectID(kCMIOObjectSystemObject), kCMIOHardwarePropertyDevices)
             .first { Self.string($0, kCMIODevicePropertyDeviceUID) == CameraIDs.device.uuidString }
         guard let found else {
-            if device != nil { CameraController.log.info("relay: device gone") }
+            if device != nil {
+                CameraController.log.info("relay: device gone")
+                // No device, no client streaming from it: readClients can't report the stop now.
+                onClientStreaming?(false)
+            }
             device = nil
             sourceStream = nil
             sink.close()

@@ -66,7 +66,7 @@ main() {
     in_dir "$app_dir" rm -rf "$old"
 
     open "$target" || fail "$target didn't launch."
-    echo "✓ darkfield $version is in $target and running in the menu bar (⌘F1 shares the front window)."
+    echo "✓ darkfield $version is in $target and running in the menu bar (⇧⌘1 shares the window under the pointer)."
 }
 
 main "$@"

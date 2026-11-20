@@ -65,8 +65,7 @@ final class OutputController {
     private func showForPicking() {
         guard current == .meeting, let w = shareWindow, let main = NSScreen.screens.first else { return }
         let primaryHeight = main.frame.height
-        let display = CGRect(x: main.frame.minX, y: primaryHeight - main.frame.maxY,
-                             width: main.frame.width, height: main.frame.height)
+        let display = ScreenSpace.toCG(main.frame, primaryHeight: primaryHeight)
         let cg = Parking.pickingFrame(size: Layout.canvas, display: display)
         applyTraits(.for(picking: true, output: current))
         let frame = ScreenSpace.toAppKit(cg, primaryHeight: primaryHeight)
@@ -167,9 +166,7 @@ final class OutputController {
     private func parkShare() {
         guard let w = shareWindow else { return }
         let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
-        let displays = NSScreen.screens.map { f in
-            CGRect(x: f.frame.minX, y: primaryHeight - f.frame.maxY, width: f.frame.width, height: f.frame.height)
-        }
+        let displays = NSScreen.screens.map { ScreenSpace.toCG($0.frame, primaryHeight: primaryHeight) }
         let cg = Parking.frame(size: Layout.canvas, displays: displays)
         w.setFrame(ScreenSpace.toAppKit(cg, primaryHeight: primaryHeight), display: true)
     }

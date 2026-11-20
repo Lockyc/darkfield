@@ -66,6 +66,7 @@ struct HotKeyRecorder: View {
     ]
 
     static func keyName(_ e: NSEvent) -> String {
-        functionKeys[Int(e.keyCode)] ?? (e.charactersIgnoringModifiers ?? "?").uppercased()
+        // The unshifted key: ⇧⌘1 names "1", never the "!" charactersIgnoringModifiers gives.
+        functionKeys[Int(e.keyCode)] ?? (e.characters(byApplyingModifiers: []) ?? "?").uppercased()
     }
 }
