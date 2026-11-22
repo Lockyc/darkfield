@@ -88,7 +88,7 @@ struct CameraSectionView: View {
         case .needsApproval:
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)
-                Text("Allow Darkfield Camera in System Settings").font(.caption)
+                Text("Turn on darkfield under Extensions → Camera Extensions ⓘ").font(.caption)
                 Spacer()
                 Button("Open Settings") { relay.openApprovalSettings() }.controlSize(.small)
             }

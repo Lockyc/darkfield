@@ -43,8 +43,11 @@ final class CameraRelay: NSObject, ObservableObject {
     /// Called on the capture queue with each processed frame.
     nonisolated func send(_ frame: CMSampleBuffer) { sink.enqueue(frame) }
 
+    /// Opens Login Items & Extensions scrolled to its Extensions section, where the Camera
+    /// Extensions row's ⓘ holds the toggle. Without the anchor the pane opens at the top, above
+    /// every login and background item.
     func openApprovalSettings() {
-        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!)
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension?ExtensionItems")!)
     }
 
     // MARK: CoreMediaIO
