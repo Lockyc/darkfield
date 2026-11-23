@@ -3,8 +3,10 @@ import DarkfieldCore
 import ScreenCaptureKit
 
 /// Keeps one `WindowCapture` per shared window and the wallpaper capture in step with the shared
-/// set and the system's windows, polling `SCShareableContent` twice a second, and stacks the
-/// result into the `CanvasModel`, re-reading the on-screen stacking ten times a second.
+/// set and the system's windows, and stacks the result into the `CanvasModel`. While a window is
+/// shared it polls `SCShareableContent` twice a second and re-reads the on-screen stacking ten
+/// times a second; with nothing shared it polls every `idlePollInterval` and skips the stacking,
+/// since each fetch walks every window on the Mac through WindowServer and replayd.
 @MainActor
 final class CaptureManager {
     private(set) var set = SharedSet()
@@ -13,7 +15,12 @@ final class CaptureManager {
     private(set) var info: [CGWindowID: (title: String, app: NSRunningApplication?)] = [:]
     /// Every on-screen window, front to back, for pointer hit-testing.
     private(set) var onScreen: [OnScreenWindow] = []
-    var settings = Settings() { didSet { relayout() } }
+    var settings = Settings() {
+        didSet {
+            relayout()
+            if settings.wallpaper != oldValue.wallpaper { Task { await poll() } }
+        }
+    }
     var onChange: (() -> Void)?
     /// Called when a window joins the shared set.
     var onShared: (() -> Void)?
@@ -29,6 +36,9 @@ final class CaptureManager {
     private var timer: Timer?
     private var stackTimer: Timer?
     private var polling = false
+    private var lastPoll = Date.distantPast
+    /// How often the idle poll refreshes the wallpaper still while nothing is shared.
+    static let idlePollInterval: TimeInterval = 10
 
     init(model: CanvasModel) {
         self.model = model
@@ -42,10 +52,18 @@ final class CaptureManager {
 
     func start() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            Task { @MainActor in await self?.poll() }
+            Task { @MainActor in
+                guard let self, !self.set.ids.isEmpty || Date().timeIntervalSince(self.lastPoll) >= Self.idlePollInterval else { return }
+                await self.poll()
+            }
         }
         Task { await poll() }
-        let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.restack() } }
+        let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, !self.set.ids.isEmpty else { return }
+                self.restack()
+            }
+        }
         RunLoop.main.add(t, forMode: .common)
         stackTimer = t
     }
@@ -109,6 +127,7 @@ final class CaptureManager {
     private func poll() async {
         guard !polling else { return }
         polling = true
+        lastPoll = Date()
         defer { polling = false }
         let snapshot = set.generation
         guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false) else { return }
