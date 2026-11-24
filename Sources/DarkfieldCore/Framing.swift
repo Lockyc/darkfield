@@ -2,20 +2,24 @@ import CoreGraphics
 import Foundation
 
 /// Darkfield Camera's auto-framing: a 16:9 crop of the source that follows the presenter the
-/// way Center Stage does — a slow, damped zoom and pan that ignores small movements.
+/// way Center Stage does — a slow, damped zoom and pan that ignores small or brief movements.
 ///
 /// Rects are normalized source coordinates with a top-left origin (0…1). The crop always lies
 /// inside the source, and `crop` is the full source until the first `step`.
 public struct Framing {
     public private(set) var crop = CGRect(x: 0, y: 0, width: 1, height: 1)
-    /// The framing the crop is easing towards. A new target replaces it only from outside the
-    /// dead zone, so the shot holds still while the presenter shifts in their seat.
+    /// The framing the crop is easing towards. A new target replaces it only once it has stayed
+    /// outside the dead zone for `dwell`, so the shot holds still while the presenter shifts in
+    /// their seat, leans in, or turns away long enough for face detection to drop them.
     private var goal: (cx: CGFloat, cy: CGFloat, w: CGFloat)?
     private var current: (cx: CGFloat, cy: CGFloat, w: CGFloat)?
+    /// How long the target has been continuously outside the dead zone.
+    private var outsideFor: TimeInterval = 0
 
-    static let halfLife: TimeInterval = 0.6
-    static let deadZoneCentre: CGFloat = 0.08
-    static let deadZoneWidth: CGFloat = 0.10
+    static let halfLife: TimeInterval = 1.2
+    static let dwell: TimeInterval = 1.0
+    static let deadZoneCentre: CGFloat = 0.15
+    static let deadZoneWidth: CGFloat = 0.25
     /// Within this of the goal the crop snaps to it and holds still; an ease that never arrives
     /// would keep the shot drifting by a pixel forever.
     static let settle: CGFloat = 0.002
@@ -41,7 +45,8 @@ public struct Framing {
         if let g = goal {
             let moved = abs(target.cx - g.cx) > Self.deadZoneCentre * g.w || abs(target.cy - g.cy) > Self.deadZoneCentre * g.w
             let resized = abs(target.w - g.w) > Self.deadZoneWidth * g.w
-            if moved || resized { goal = target }
+            outsideFor = moved || resized ? outsideFor + dt : 0
+            if outsideFor >= Self.dwell { goal = target; outsideFor = 0 }
         } else {
             goal = target
         }
