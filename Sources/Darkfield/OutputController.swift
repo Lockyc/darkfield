@@ -111,7 +111,7 @@ final class OutputController {
         case .meeting:
             closeProjector()
             current = .meeting
-            showMeeting()
+            showShare()
         case .projector(let id):
             guard let screen = Self.screen(for: id), CGDisplayIsInMirrorSet(id) == 0 else {
                 fallBack(id)
@@ -136,11 +136,6 @@ final class OutputController {
         guard let back = candidates.min(by: { hypot($0.x - p.x, $0.y - p.y) < hypot($1.x - p.x, $1.y - p.y) }) else { return }
         CGWarpMouseCursorPosition(back)
         CGAssociateMouseAndMouseCursorPosition(1)
-    }
-
-    private func showMeeting() {
-        showShare()
-        autoShowPreview()
     }
 
     private func showShare() {
@@ -176,9 +171,9 @@ final class OutputController {
         if current == .meeting { showPreview() }
     }
 
-    /// The preview opens by itself (on launch, on switching to Meeting, on sharing a window) only
-    /// for the Meeting output with more than one display: on a lone screen it would sit over what
-    /// is being presented, and a projector already shows the canvas.
+    /// The preview opens by itself when a window is shared or the projector falls back, only for the Meeting output with more
+    /// than one display: on a lone screen it would sit over what is being presented, and a
+    /// projector already shows the canvas.
     func autoShowPreview() {
         if NSScreen.screens.count > 1 { showPreviewIfMeeting() }
     }
@@ -262,7 +257,8 @@ final class OutputController {
     private func fallBack(_ id: CGDirectDisplayID) {
         closeProjector()
         current = .meeting
-        showMeeting()
+        showShare()
+        autoShowPreview()
         onFallback?(CGDisplayIsInMirrorSet(id) != 0 && Self.screen(for: id) != nil
             ? "Displays are mirrored — showing the Meeting window. Set them to extended to project."
             : "Projector disconnected — showing the Meeting window")

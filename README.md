@@ -48,8 +48,8 @@ you quit and reopen it.
   screen: the shared window you bring to the front is the one the audience sees.
 - **In a call**, share the **▶ Darkfield** window from Zoom, Meet or Teams. It sits off screen at
   the canvas's full 1920×1080. You watch a small preview that floats above your windows on every
-  Space and never appears in a share. With more than one display it opens by itself, and sharing
-  a window brings it back; with one display it opens only from **Show Preview Window**. Its close
+  Space and never appears in a share. With more than one display it opens when you share a
+  window; with one display it opens only from **Show Preview Window**. Its close
   button hides it. A picker that selects a window by clicking it (Meet in
   [cooee](https://github.com/lockyc/cooee)) has ▶ Darkfield shown centred on your main display
   while it is open; another app can do the same by posting the distributed notifications
