@@ -197,7 +197,12 @@ final class SinkStream: NSObject, CMIOExtensionStreamSource {
     private(set) var stream: CMIOExtensionStream!
     private let format: CMIOExtensionStreamFormat
     private unowned let device: Device
+    /// Guards everything below and runs the consume loop. CMIO calls in on its client queue and
+    /// delivers samples on its own, so nothing below is touched off this queue.
+    private let queue = DispatchQueue(label: "com.lockyc.darkfield.camera.sink")
     private var client: CMIOExtensionClient?
+    private var consumed = 0
+    private var errors = 0
 
     init(format: CMIOExtensionStreamFormat, device: Device) {
         self.format = format
@@ -224,46 +229,56 @@ final class SinkStream: NSObject, CMIOExtensionStreamSource {
     func setStreamProperties(_ streamProperties: CMIOExtensionStreamProperties) throws {}
 
     func authorizedToStartStream(for client: CMIOExtensionClient) -> Bool {
-        self.client = client
+        queue.sync { self.client = client }
         return true
     }
 
     func startStream() throws {
-        log.info("sink: start, client=\(self.client != nil)")
-        consume()
+        queue.async {
+            log.info("sink: start, client=\(self.client != nil)")
+            self.consume()
+        }
     }
 
     func stopStream() throws {
-        log.info("sink: stop after \(self.consumed) frames")
-        client = nil
+        queue.sync {
+            log.info("sink: stop after \(self.consumed) frames")
+            client = nil
+        }
     }
 
-    private var consumed = 0
-    private var errors = 0
-
+    /// Runs on `queue`.
     private func consume() {
         guard let client else { return }
         stream.consumeSampleBuffer(from: client) { [weak self] sample, sequence, _, _, error in
             guard let self else { return }
-            if let error {
-                errors += 1
-                if errors % 30 == 1 {
-                    let e = error as NSError
-                    log.error("sink: consume error #\(self.errors, privacy: .public) \(e.domain, privacy: .public) \(e.code, privacy: .public) \(e.localizedDescription, privacy: .public)")
-                }
+            queue.async { self.handle(sample, sequence: sequence, error: error) }
+        }
+    }
+
+    /// Runs on `queue`.
+    private func handle(_ sample: CMSampleBuffer?, sequence: UInt64, error: Error?) {
+        if let error {
+            errors += 1
+            if errors % 30 == 1 {
+                let e = error as NSError
+                log.error("sink: consume error #\(self.errors, privacy: .public) \(e.domain, privacy: .public) \(e.code, privacy: .public) \(e.localizedDescription, privacy: .public)")
             }
-            if let sample, let pixels = CMSampleBufferGetImageBuffer(sample) {
-                consumed += 1
-                if consumed % 90 == 1 { log.info("sink: \(self.consumed) frames") }
-                device.received(pixels)
-                let now = CMClockGetTime(CMClockGetHostTimeClock())
-                stream.notifyScheduledOutputChanged(CMIOExtensionScheduledOutput(
-                    sequenceNumber: sequence, hostTimeInNanoseconds: UInt64(now.seconds * Double(NSEC_PER_SEC))))
-            }
-            // Keep consuming while darkfield is connected; a nil sample just means none was ready.
-            if self.client != nil {
-                DispatchQueue.global(qos: .userInteractive).asyncAfter(deadline: .now() + (sample == nil ? 0.005 : 0)) { self.consume() }
-            }
+        }
+        if let sample, let pixels = CMSampleBufferGetImageBuffer(sample) {
+            consumed += 1
+            if consumed % 90 == 1 { log.info("sink: \(self.consumed) frames") }
+            device.received(pixels)
+            let now = CMClockGetTime(CMClockGetHostTimeClock())
+            stream.notifyScheduledOutputChanged(CMIOExtensionScheduledOutput(
+                sequenceNumber: sequence, hostTimeInNanoseconds: UInt64(now.seconds * Double(NSEC_PER_SEC))))
+        }
+        // Keep consuming while darkfield is connected; a nil sample just means none was ready.
+        guard client != nil else { return }
+        if sample == nil {
+            queue.asyncAfter(deadline: .now() + 0.005) { self.consume() }
+        } else {
+            consume()
         }
     }
 }
