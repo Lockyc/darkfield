@@ -216,7 +216,8 @@ final class CaptureManager {
         onChange?()
     }
 
-    /// `onScreenWindows` without `ignoredWindows`.
+    /// The on-screen windows that can hide the pointer (`PointerMap.canHidePointer`), without
+    /// `ignoredWindows`.
     private func visibleWindows() -> [OnScreenWindow] {
         let ignored = ignoredWindows()
         return Self.onScreenWindows(where: PointerMap.canHidePointer).filter { !ignored.contains($0.id) }
