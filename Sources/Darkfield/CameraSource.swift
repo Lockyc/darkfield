@@ -54,16 +54,20 @@ final class CameraSource {
     }
 
     /// Every touch of the session runs on the session queue, in call order: a stop followed by a
-    /// start can't interleave their input changes.
+    /// start can't interleave their input changes. A camera that fails to open leaves nothing
+    /// running, so the next start for it tries again.
     func start(id: String) {
         guard runningID != id else { return }
         stop()
         runningID = id
         let session = session
-        sessionQueue.async {
+        sessionQueue.async { [weak self] in
             guard let device = Self.devices().first(where: { $0.uniqueID == id }),
                   let input = try? AVCaptureDeviceInput(device: device) else {
                 CameraController.log.error("capture: can't open camera")
+                Task { @MainActor in
+                    if self?.runningID == id { self?.runningID = nil }
+                }
                 return
             }
             session.beginConfiguration()
