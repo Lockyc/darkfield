@@ -136,7 +136,7 @@ final class CameraDemandSequenceTests: XCTestCase {
                     connected.removeAll { $0 == c }
                     trace.append("unplug \(c.id)")
                 default:
-                    let choice = settings.choices.shuffled(using: &rng)
+                    let choice = settings.known.shuffled(using: &rng)
                     settings.preferred = Array(choice.prefix(Int.random(in: 0...choice.count, using: &rng)))
                     trace.append("prefer \(settings.preferred.map(\.id))")
                 }

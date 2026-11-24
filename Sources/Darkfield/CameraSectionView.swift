@@ -107,7 +107,7 @@ struct CameraSectionView: View {
 
     private var preferred: [CameraInfo] { model.settings.camera.preferred }
 
-    private var choices: [CameraInfo] { model.settings.camera.choices }
+    private var choices: [CameraInfo] { model.settings.camera.known }
 
     /// A picker for one place in the preference order: every camera darkfield has seen, unplugged
     /// ones marked, and `none` (choosing it clears the place) when given.

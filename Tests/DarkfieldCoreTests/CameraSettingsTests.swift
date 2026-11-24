@@ -34,7 +34,7 @@ final class CameraSettingsTests: XCTestCase {
         XCTAssertEqual(c.framingTightness, 0.5)
     }
 
-    func testRemembersEveryCameraSeenAndListsThePreferredOnes() {
+    func testRemembersEveryCameraSeen() {
         let usb = CameraInfo(id: "usb1", name: "EMEET SmartCam S600")
         let mac = CameraInfo(id: "mac", name: "FaceTime HD Camera")
         var c = CameraSettings(preferred: [mac])
@@ -42,14 +42,6 @@ final class CameraSettingsTests: XCTestCase {
         c.remember([mac])
         XCTAssertEqual(c.known, [usb, mac])
         XCTAssertFalse({ var d = c; return d.remember([mac, usb]) }())
-        // A preferred camera saved before cameras were remembered is still offered.
-        XCTAssertEqual(CameraSettings(preferred: [usb]).choices, [usb])
-    }
-
-    func testSingleSavedCameraBecomesTheFirstPreference() throws {
-        let json = #"{"deviceID": "usb1", "deviceName": "EMEET SmartCam S600"}"#
-        let c = try JSONDecoder().decode(CameraSettings.self, from: Data(json.utf8))
-        XCTAssertEqual(c.preferred, [CameraInfo(id: "usb1", name: "EMEET SmartCam S600")])
     }
 
     func testCameraRoundTrip() throws {

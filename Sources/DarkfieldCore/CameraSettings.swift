@@ -34,18 +34,9 @@ public struct CameraSettings: Codable, Equatable, Sendable {
         return !new.isEmpty
     }
 
-    /// The cameras the presenter can choose from, connected or not: every known camera, plus any
-    /// preferred one not yet known.
-    public var choices: [CameraInfo] {
-        known + preferred.filter { p in !known.contains { $0.id == p.id } }
-    }
-
     private enum CodingKeys: String, CodingKey {
         case known, preferred, blur, blurStrength, framing, framingTightness, mirrorPreview
     }
-
-    /// Settings saved with a single chosen camera, read so that camera becomes the first preference.
-    private enum SingleCameraKeys: String, CodingKey { case deviceID, deviceName }
 
     /// Field by field, like `Settings`: a missing or undecodable key takes its default.
     public init(from decoder: Decoder) throws {
@@ -55,13 +46,7 @@ public struct CameraSettings: Codable, Equatable, Sendable {
             (try? c.decodeIfPresent(T.self, forKey: key)) ?? fallback
         }
         known = field(.known, known)
-        if c.contains(.preferred) {
-            preferred = field(.preferred, preferred)
-        } else if let single = try? decoder.container(keyedBy: SingleCameraKeys.self),
-                  let id = try? single.decodeIfPresent(String.self, forKey: .deviceID) {
-            let name = (try? single.decodeIfPresent(String.self, forKey: .deviceName)) ?? nil
-            preferred = [CameraInfo(id: id, name: name ?? "The chosen camera")]
-        }
+        preferred = field(.preferred, preferred)
         blur = field(.blur, blur)
         blurStrength = field(.blurStrength, blurStrength)
         framing = field(.framing, framing)
