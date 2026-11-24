@@ -22,6 +22,7 @@ final class CameraRelay: NSObject, ObservableObject {
     private let sink = Sink()
     private var device: CMIOObjectID?
     private var sourceStream: CMIOObjectID?
+    private var sinkStream: CMIOObjectID?
 
     func activate() {
         let embedded = Bundle.main.bundleURL
@@ -121,6 +122,7 @@ final class CameraRelay: NSObject, ObservableObject {
             }
             device = nil
             sourceStream = nil
+            sinkStream = nil
             sink.close()
             feed(.deviceGone)
             return
@@ -134,8 +136,9 @@ final class CameraRelay: NSObject, ObservableObject {
             return
         }
         feed(.deviceSeen)
+        sink.close()
         sourceStream = source
-        sink.open(device: found, stream: sinkStream)
+        self.sinkStream = sinkStream
         var address = CMIOObjectPropertyAddress(mSelector: CameraIDs.clientsSelector,
                                                 mScope: CMIOObjectPropertyScope(kCMIOObjectPropertyScopeGlobal),
                                                 mElement: CMIOObjectPropertyElement(kCMIOObjectPropertyElementMain))
@@ -146,8 +149,10 @@ final class CameraRelay: NSObject, ObservableObject {
         CameraController.log.info("relay: connected")
     }
 
+    /// The sink is open only while an app streams from Darkfield Camera: while it is open the
+    /// extension polls it for frames, which costs CPU however idle the camera is.
     private func readClients() {
-        guard let sourceStream else { return }
+        guard let device, let sourceStream, let sinkStream else { return }
         var address = CMIOObjectPropertyAddress(mSelector: CameraIDs.clientsSelector,
                                                 mScope: CMIOObjectPropertyScope(kCMIOObjectPropertyScopeGlobal),
                                                 mElement: CMIOObjectPropertyElement(kCMIOObjectPropertyElementMain))
@@ -158,6 +163,7 @@ final class CameraRelay: NSObject, ObservableObject {
         }
         let streaming = status == noErr && (value?.takeRetainedValue() as String?) == "1"
         CameraController.log.info("relay: clients streaming=\(streaming)")
+        if streaming { sink.open(device: device, stream: sinkStream) } else { sink.close() }
         onClientStreaming?(streaming)
     }
 
@@ -222,7 +228,9 @@ private final class Sink: @unchecked Sendable {
     private var device: CMIOObjectID = 0
     private var stream: CMIOObjectID = 0
 
+    /// Opening the stream that is already open does nothing.
     func open(device: CMIOObjectID, stream: CMIOObjectID) {
+        if lock.withLock({ queue != nil && self.device == device && self.stream == stream }) { return }
         close()
         var q: Unmanaged<CMSimpleQueue>?
         let copied = CMIOStreamCopyBufferQueue(stream, { _, _, _ in }, nil, &q)
