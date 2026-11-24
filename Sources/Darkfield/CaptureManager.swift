@@ -219,16 +219,15 @@ final class CaptureManager {
     /// `onScreenWindows` without `ignoredWindows`.
     private func visibleWindows() -> [OnScreenWindow] {
         let ignored = ignoredWindows()
-        return Self.onScreenWindows().filter { !ignored.contains($0.id) }
+        return Self.onScreenWindows(where: PointerMap.canHidePointer).filter { !ignored.contains($0.id) }
     }
 
-    /// Every on-screen window that can hide the pointer (`PointerMap.canHidePointer`), with its CG
-    /// global bounds, front to back.
-    static func onScreenWindows() -> [OnScreenWindow] {
+    /// Every on-screen window that `keep` accepts by layer and alpha, with its CG global bounds,
+    /// front to back.
+    static func onScreenWindows(where keep: (_ layer: Int, _ alpha: Double) -> Bool) -> [OnScreenWindow] {
         guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return [] }
         return list.compactMap { w in
-            guard PointerMap.canHidePointer(layer: w[kCGWindowLayer as String] as? Int ?? 0,
-                                            alpha: w[kCGWindowAlpha as String] as? Double ?? 1),
+            guard keep(w[kCGWindowLayer as String] as? Int ?? 0, w[kCGWindowAlpha as String] as? Double ?? 1),
                   let n = w[kCGWindowNumber as String] as? CGWindowID,
                   let b = w[kCGWindowBounds as String] as? NSDictionary,
                   let rect = CGRect(dictionaryRepresentation: b) else { return nil }

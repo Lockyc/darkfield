@@ -43,14 +43,7 @@ final class ShareRings {
             return
         }
         guard !ids.isEmpty else { return }
-        let list = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]) ?? []
-        let stack: [OnScreenWindow] = list.compactMap { w in
-            guard RingCover.canCover(layer: w[kCGWindowLayer as String] as? Int ?? 0,
-                                     alpha: w[kCGWindowAlpha as String] as? Double ?? 1),
-                  let id = w[kCGWindowNumber as String] as? CGWindowID,
-                  let b = w[kCGWindowBounds as String] as? NSDictionary, let r = CGRect(dictionaryRepresentation: b) else { return nil }
-            return OnScreenWindow(id: id, frame: r)
-        }
+        let stack = CaptureManager.onScreenWindows(where: RingCover.canCover)
         let own = windowIDs
         let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
         for id in ids {
