@@ -98,21 +98,27 @@ final class CaptureManager {
     @discardableResult
     func toggle(_ id: CGWindowID, ownerPID: pid_t) -> ToggleResult {
         let result = set.toggle(id, ownerPID: ownerPID, selfPID: ProcessInfo.processInfo.processIdentifier)
-        if result == .removed {
-            drop(id)
-            relayout()
+        switch result {
+        case .removed: unshared(id)
+        case .added:
+            onShared?()
+            Task { await poll() }
+        case .refusedOwnWindow: break
         }
-        if result == .added { onShared?() }
-        Task { await poll() }
         return result
     }
 
-    /// Unsharing takes effect at once: the stream stops and the tile leaves the canvas before any
-    /// window-list fetch.
     func remove(_ id: CGWindowID) {
         set.remove(id)
+        unshared(id)
+    }
+
+    /// Unsharing takes effect at once: the stream stops and the tile leaves the canvas before any
+    /// window-list fetch. The poll that follows stops the live wallpaper once the set is empty.
+    private func unshared(_ id: CGWindowID) {
         drop(id)
         relayout()
+        Task { await poll() }
     }
 
     private func drop(_ id: CGWindowID) {
@@ -131,10 +137,10 @@ final class CaptureManager {
         defer { polling = false }
         let snapshot = set.generation
         guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false) else { return }
-        wallpaper.update(source: settings.wallpaper, content: content, live: !set.ids.isEmpty)
         let byID = Dictionary(content.windows.map { ($0.windowID, $0) }, uniquingKeysWith: { a, _ in a })
 
         set.prune(present: Set(byID.keys), snapshot: snapshot)
+        wallpaper.update(source: settings.wallpaper, content: content, live: !set.ids.isEmpty)
         for id in Array(captures.keys) where !set.ids.contains(id) { drop(id) }
         for id in set.ids {
             guard let window = byID[id] else { continue }
