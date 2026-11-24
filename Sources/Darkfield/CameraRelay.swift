@@ -128,8 +128,7 @@ final class CameraRelay: NSObject, ObservableObject {
         guard found != device else { return }
         device = found
         let streams = Self.objects(found, kCMIODevicePropertyStreams)
-        let sinkName = "\(CameraIDs.deviceName) Input"
-        guard let sinkStream = streams.first(where: { Self.string($0, kCMIOObjectPropertyName) == sinkName }),
+        guard let sinkStream = streams.first(where: { Self.string($0, kCMIOObjectPropertyName) == CameraIDs.sinkStreamName }),
               let source = streams.first(where: { $0 != sinkStream }) else {
             feed(.deviceUnusable("Darkfield Camera is missing a stream"))
             return

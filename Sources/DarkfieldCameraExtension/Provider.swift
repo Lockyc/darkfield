@@ -7,7 +7,7 @@ import os
 private let log = Logger(subsystem: "com.lockyc.darkfield.camera", category: "extension")
 
 /// The camera extension. It never opens a camera: darkfield writes processed frames into the
-/// sink stream, and the source stream relays the latest one to video apps at 30 fps — or a plain
+/// sink stream, and the source stream relays the latest one to video apps at `CameraIDs.frameRate` — or a plain
 /// dark frame when darkfield has sent nothing recent.
 final class Provider: NSObject, CMIOExtensionProviderSource {
     private(set) var provider: CMIOExtensionProvider!
@@ -208,7 +208,7 @@ final class SinkStream: NSObject, CMIOExtensionStreamSource {
         self.format = format
         self.device = device
         super.init()
-        stream = CMIOExtensionStream(localizedName: "\(CameraIDs.deviceName) Input", streamID: CameraIDs.sinkStream,
+        stream = CMIOExtensionStream(localizedName: CameraIDs.sinkStreamName, streamID: CameraIDs.sinkStream,
                                      direction: .sink, clockType: .hostTime, source: self)
     }
 

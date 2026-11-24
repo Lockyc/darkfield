@@ -9,6 +9,8 @@ public enum CameraIDs {
     public static let sourceStream = UUID(uuidString: "6D0C5B4E-1F8A-4E43-9B1C-2C7A9B3E5D11")!
     /// The stream darkfield writes its processed frames into.
     public static let sinkStream = UUID(uuidString: "6D0C5B4E-1F8A-4E43-9B1C-2C7A9B3E5D12")!
+    /// The sink stream's name, which darkfield finds it by through CoreMediaIO.
+    public static let sinkStreamName = "\(deviceName) Input"
     /// A custom property on the source stream: "1" while any app is streaming from Darkfield
     /// Camera, else "0". darkfield runs the physical camera only while it reads "1".
     public static let clientsProperty = "4cc_dfcl_glob_0000"

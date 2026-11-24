@@ -36,7 +36,7 @@ final class CameraProcessor {
     func process(_ pixels: CVPixelBuffer, time: CMTime, settings: CameraSettings) -> CMSampleBuffer? {
         let source = CIImage(cvPixelBuffer: pixels)
         let extent = source.extent
-        let dt = lastTime.map { min(max((time - $0).seconds, 0), 0.1) } ?? 1.0 / 30
+        let dt = lastTime.map { min(max((time - $0).seconds, 0), 0.1) } ?? 1.0 / Double(CameraIDs.frameRate)
         lastTime = time
 
         var requests: [VNRequest] = []
@@ -99,7 +99,7 @@ final class CameraProcessor {
         var format: CMVideoFormatDescription?
         CMVideoFormatDescriptionCreateForImageBuffer(allocator: nil, imageBuffer: pixels, formatDescriptionOut: &format)
         guard let format else { return nil }
-        var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: 30), presentationTimeStamp: time, decodeTimeStamp: .invalid)
+        var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: CMTimeScale(CameraIDs.frameRate)), presentationTimeStamp: time, decodeTimeStamp: .invalid)
         var sample: CMSampleBuffer?
         CMSampleBufferCreateReadyWithImageBuffer(allocator: nil, imageBuffer: pixels, formatDescription: format,
                                                  sampleTiming: &timing, sampleBufferOut: &sample)

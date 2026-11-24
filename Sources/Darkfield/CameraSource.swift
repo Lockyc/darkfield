@@ -69,7 +69,7 @@ final class CameraSource {
             session.beginConfiguration()
             if session.canAddInput(input) { session.addInput(input) }
             session.commitConfiguration()
-            Self.prefer1080p30(device)
+            Self.preferOutputFormat(device)
             session.startRunning()
             CameraController.log.info("capture: started, running=\(session.isRunning) inputs=\(session.inputs.count)")
         }
@@ -88,19 +88,22 @@ final class CameraSource {
         }
     }
 
-    /// 1920×1080 at 30 fps when the camera has it, else its largest format up to 1080 lines.
-    nonisolated private static func prefer1080p30(_ device: AVCaptureDevice) {
-        func supports30(_ f: AVCaptureDevice.Format) -> Bool {
-            f.videoSupportedFrameRateRanges.contains { $0.minFrameRate <= 30 && $0.maxFrameRate >= 30 }
+    /// Darkfield Camera's own size and rate (`CameraIDs`) when the camera has it, else its largest
+    /// format at that rate up to that height.
+    nonisolated private static func preferOutputFormat(_ device: AVCaptureDevice) {
+        let rate = Double(CameraIDs.frameRate)
+        func supportsRate(_ f: AVCaptureDevice.Format) -> Bool {
+            f.videoSupportedFrameRateRanges.contains { $0.minFrameRate <= rate && $0.maxFrameRate >= rate }
         }
-        let formats = device.formats.filter(supports30)
+        let formats = device.formats.filter(supportsRate)
         let dims = { (f: AVCaptureDevice.Format) in CMVideoFormatDescriptionGetDimensions(f.formatDescription) }
-        let best = formats.first { dims($0).width == 1920 && dims($0).height == 1080 }
-            ?? formats.filter { dims($0).height <= 1080 }.max { dims($0).width < dims($1).width }
+        let best = formats.first { dims($0).width == CameraIDs.width && dims($0).height == CameraIDs.height }
+            ?? formats.filter { dims($0).height <= CameraIDs.height }.max { dims($0).width < dims($1).width }
         guard let best, (try? device.lockForConfiguration()) != nil else { return }
         device.activeFormat = best
-        device.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 30)
-        device.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: 30)
+        let duration = CMTime(value: 1, timescale: CMTimeScale(CameraIDs.frameRate))
+        device.activeVideoMinFrameDuration = duration
+        device.activeVideoMaxFrameDuration = duration
         device.unlockForConfiguration()
     }
 }
